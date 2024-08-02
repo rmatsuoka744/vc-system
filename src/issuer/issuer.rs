@@ -1,13 +1,13 @@
 use crate::models::credential::{CredentialRequest, CredentialResponse, IssuerMetadata};
 use crate::utils::crypto;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
+use crate::issuer::error::IssuerError;
+use url::Url;
 
-pub fn create_credential(request: CredentialRequest) -> Result<CredentialResponse, String> {
+pub fn create_credential(request: CredentialRequest) -> Result<CredentialResponse, IssuerError> {
     // 1. Validate the request
-    if !is_valid_credential_request(&request) {
-        return Err("Invalid credential request".to_string());
-    }
+    validate_credential_request(&request)?;
 
     // 2. Generate a unique identifier for the credential
     let credential_id = Uuid::new_v4().to_string();
@@ -29,11 +29,11 @@ pub fn create_credential(request: CredentialRequest) -> Result<CredentialRespons
             credential.proof = Some(proof);
             Ok(credential)
         }
-        Err(e) => Err(format!("Failed to sign credential: {}", e)),
+        Err(e) => Err(e),
     }
 }
 
-pub fn get_metadata() -> Result<IssuerMetadata, String> {
+pub fn get_metadata() -> Result<IssuerMetadata, IssuerError> {
     // In a real-world scenario, this might be fetched from a database or configuration
     Ok(IssuerMetadata {
         id: "did:example:123".to_string(),
@@ -42,26 +42,62 @@ pub fn get_metadata() -> Result<IssuerMetadata, String> {
     })
 }
 
-fn is_valid_credential_request(request: &CredentialRequest) -> bool {
-    // Implement validation logic
-    // For example, check if all required fields are present and in correct format
-    !request.context.is_empty() && !request.types.is_empty() && !request.issuer.is_empty()
+pub fn validate_credential_request(request: &CredentialRequest) -> Result<(), IssuerError> {
+    // コンテキストの検証
+    if !request.context.contains(&"https://www.w3.org/2018/credentials/v1".to_string()) {
+        return Err(IssuerError::InvalidContext(
+            "must include 'https://www.w3.org/2018/credentials/v1'".to_string(),
+        ));
+    }
+    // タイプの検証
+    if !request.types.contains(&"VerifiableCredential".to_string()) {
+        return Err(IssuerError::InvalidType(
+            "must include 'VerifiableCredential'".to_string(),
+        ));
+    }
+    // 発行者の検証
+    if Url::parse(&request.issuer).is_err() {
+        return Err(IssuerError::InvalidIssuer(
+            "must be a valid URL".to_string(),
+        ));
+    }
+    // 発行日の検証
+    match DateTime::parse_from_rfc3339(&request.issuance_date) {
+        Ok(date) => {
+            if date > Utc::now() {
+                return Err(IssuerError::InvalidIssuanceDate(
+                    "cannot be in the future".to_string(),
+                ));
+            }
+        }
+        Err(_) => {
+            return Err(IssuerError::InvalidIssuanceDate(
+                "must be a valid RFC 3339 date".to_string(),
+            ));
+        }
+    }
+    // credential_subject の検証
+    if !request.credential_subject.is_object() {
+        return Err(IssuerError::InvalidCredentialSubject(
+            "must be a JSON object".to_string(),
+        ));
+    }
+    Ok(())
 }
 
-fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value, String> {
-    // Implement signing logic using crypto utilities
+fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value, IssuerError> {
     let credential_json = serde_json::to_value(credential)
-        .map_err(|e| format!("Failed to serialize credential: {}", e))?;
-    
-    crypto::sign_json(&credential_json)
-        .map_err(|e| format!("Failed to sign credential: {}", e))
+        .map_err(|e| IssuerError::SerializationError(e.to_string()))?;
+
+        crypto::sign_json(&credential_json)
+        .map_err(|e| IssuerError::SigningError(e.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, web, App};
     use crate::issuer::api;
+    use actix_web::{test, web, App};
 
     // 単体テスト
     #[tokio::test]
@@ -95,9 +131,11 @@ mod tests {
     // 統合テスト（APIを使用）
     #[actix_web::test]
     async fn test_issue_credential_api() {
-        let app = test::init_service(
-            App::new().service(web::resource("/credentials").route(web::post().to(api::issue_credential)))
-        ).await;
+        let app =
+            test::init_service(App::new().service(
+                web::resource("/credentials").route(web::post().to(api::issue_credential)),
+            ))
+            .await;
 
         let req = test::TestRequest::post()
             .uri("/credentials")
@@ -121,8 +159,10 @@ mod tests {
     #[actix_web::test]
     async fn test_get_issuer_metadata_api() {
         let app = test::init_service(
-            App::new().service(web::resource("/metadata").route(web::get().to(api::get_issuer_metadata)))
-        ).await;
+            App::new()
+                .service(web::resource("/metadata").route(web::get().to(api::get_issuer_metadata))),
+        )
+        .await;
 
         let req = test::TestRequest::get().uri("/metadata").to_request();
         let resp = test::call_service(&app, req).await;
