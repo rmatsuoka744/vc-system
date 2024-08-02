@@ -50,9 +50,9 @@ pub struct PublicKeyInfo {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PresentationRequest {
     #[serde(rename = "verifiableCredential")]
-    pub credential_ids: Vec<String>,
-    pub challenge: String,
+    pub verifiable_credential: Vec<String>,
     pub domain: String,
+    pub challenge: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

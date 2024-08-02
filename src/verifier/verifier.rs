@@ -1,8 +1,12 @@
 use crate::models::credential::{CredentialResponse, VerifiablePresentation};
 use crate::utils::crypto;
-use log::debug;
+use log::{debug, info, warn, error};
 
 pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, String> {
+    info!(
+        "Starting verification of credential: {}",
+        credential.id.as_ref().unwrap_or(&"Unknown ID".to_string())
+    );
     debug!("Verifying credential: {:?}", credential);
 
     let credential_without_proof = {
@@ -11,22 +15,39 @@ pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, String
         cred
     };
 
-    let proof = credential.proof.as_ref().ok_or("Proof is missing")?;
+    debug!("Credential without proof: {:?}", credential_without_proof);
 
-    crypto::verify_signature(&credential_without_proof, proof)?;
+    let proof = credential.proof.as_ref().ok_or_else(|| {
+        error!("Proof is missing in the credential");
+        "Proof is missing".to_string()
+    })?;
+
+    debug!("Verifying signature");
+    match crypto::verify_signature(&credential_without_proof, proof) {
+        Ok(_) => debug!("Signature verification successful"),
+        Err(e) => {
+            error!("Signature verification failed: {}", e);
+            return Err(e);
+        }
+    }
 
     // 2. 発行者の検証 (ここでは簡略化していますが、実際にはDIDの解決などが必要です)
     if !is_trusted_issuer(&credential.issuer) {
+        warn!("Untrusted issuer: {}", credential.issuer);
         return Err("Untrusted issuer".to_string());
     }
+    debug!("Issuer verification successful");
 
     // 3. その他の検証 (有効期限、失効状態など)
-    // ...
+    // TODO: Implement additional verifications
+    debug!("Additional verifications not implemented yet");
 
+    info!("Credential verification successful");
     Ok(true)
 }
 
 pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool, String> {
+    info!("Starting verification of presentation");
     debug!("Verifying presentation: {:?}", presentation);
 
     let presentation_without_proof = {
@@ -35,20 +56,50 @@ pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool
         pres
     };
 
-    let proof = presentation.proof.as_ref().ok_or("Proof is missing")?;
+    debug!(
+        "Presentation without proof: {:?}",
+        presentation_without_proof
+    );
 
-    crypto::verify_signature(&presentation_without_proof, proof)?;
+    let proof = presentation.proof.as_ref().ok_or_else(|| {
+        error!("Proof is missing in the presentation");
+        "Proof is missing".to_string()
+    })?;
 
-    // 2. 含まれる各資格情報の検証
-    for credential in &presentation.verifiable_credential {
-        verify_credential(credential)?;
+    debug!("Verifying presentation signature");
+    match crypto::verify_signature(&presentation_without_proof, proof) {
+        Ok(_) => debug!("Presentation signature verification successful"),
+        Err(e) => {
+            error!("Presentation signature verification failed: {}", e);
+            return Err(e);
+        }
     }
 
+    // 2. 含まれる各資格情報の検証
+    debug!("Verifying individual credentials in the presentation");
+    for (index, credential) in presentation.verifiable_credential.iter().enumerate() {
+        info!("Verifying credential {} in the presentation", index + 1);
+        match verify_credential(credential) {
+            Ok(_) => debug!("Credential {} verification successful", index + 1),
+            Err(e) => {
+                error!("Credential {} verification failed: {}", index + 1, e);
+                return Err(format!(
+                    "Credential {} verification failed: {}",
+                    index + 1,
+                    e
+                ));
+            }
+        }
+    }
+
+    info!("Presentation verification successful");
     Ok(true)
 }
 
-fn is_trusted_issuer(_issuer: &str) -> bool {
+fn is_trusted_issuer(issuer: &str) -> bool {
     // 実際の実装では、信頼できる発行者のリストをチェックします
+    debug!("Checking if issuer is trusted: {}", issuer);
+    // TODO: Implement actual issuer trust verification
     true
 }
 

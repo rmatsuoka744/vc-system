@@ -28,6 +28,7 @@ pub fn create_credential(request: CredentialRequest) -> Result<CredentialRespons
     debug!("Schema retrieved: {:?}", schema);
 
     schema::validate_credential_subject(&request.credential_subject, &schema)?;
+    debug!("Credential subject validated successfully");
 
     let credential_id = Uuid::new_v4().to_string();
     debug!("Generated credential ID: {}", credential_id);
@@ -47,7 +48,7 @@ pub fn create_credential(request: CredentialRequest) -> Result<CredentialRespons
     match sign_credential(&credential) {
         Ok(proof) => {
             credential.proof = Some(proof);
-            info!("Credential signed successfully");
+            info!("Credential signed successfully. ID: {}", credential_id);
             Ok(credential)
         }
         Err(e) => {
@@ -59,12 +60,21 @@ pub fn create_credential(request: CredentialRequest) -> Result<CredentialRespons
 
 pub fn get_metadata() -> Result<IssuerMetadata, IssuerError> {
     debug!("Fetching issuer metadata");
-    let public_key_info = crypto::get_public_key_info().map_err(|e| IssuerError::CryptoError(e))?;
-    Ok(IssuerMetadata {
+    let public_key_info = crypto::get_public_key_info().map_err(|e| {
+        error!("Failed to get public key info: {}", e);
+        IssuerError::CryptoError(e)
+    })?;
+
+    let metadata = IssuerMetadata {
         id: "did:example:123".to_string(),
         name: "Example University".to_string(),
         public_key: public_key_info,
-    })
+    };
+
+    info!("Issuer metadata retrieved successfully");
+    debug!("Issuer metadata: {:?}", metadata);
+
+    Ok(metadata)
 }
 
 fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value, IssuerError> {
@@ -74,10 +84,15 @@ fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value,
         IssuerError::SerializationError(e.to_string())
     })?;
 
-    crypto::sign_json(&credential_json).map_err(|e| {
+    debug!("Credential serialized to JSON successfully");
+
+    let signed_credential = crypto::sign_json(&credential_json).map_err(|e| {
         error!("Failed to sign credential: {}", e);
         IssuerError::SigningError(e.to_string())
-    })
+    })?;
+
+    debug!("Credential signed successfully");
+    Ok(signed_credential)
 }
 
 #[cfg(test)]

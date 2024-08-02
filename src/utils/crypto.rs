@@ -2,18 +2,9 @@ use crate::models::credential::PublicKeyInfo;
 use crate::utils::key_manager::{FileKeyManager, KeyManager};
 use base58::{FromBase58, ToBase58};
 use chrono::Utc;
-use ed25519_dalek::{Keypair, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Signer, Verifier};
 use log::{debug, error};
-use rand::rngs::OsRng;
 use serde_json::Value;
-
-pub fn generate_new_keypair() -> (String, String) {
-    let mut csprng = OsRng {};
-    let keypair: Keypair = Keypair::generate(&mut csprng);
-    let public_key = keypair.public.to_bytes().to_base58();
-    let private_key = keypair.secret.to_bytes().to_base58();
-    (public_key, private_key)
-}
 
 fn get_key_manager() -> impl KeyManager {
     FileKeyManager::new("keys/keys.json".to_string())
@@ -60,8 +51,8 @@ pub fn sign_json(json: &Value) -> Result<Value, String> {
         "type": "Ed25519Signature2020",
         "created": Utc::now().to_rfc3339(),
         "verificationMethod": "did:example:123#key-1",
-        "proofPurpose": "assertionMethod",
-        "proofValue": signature.to_bytes().to_base58()
+        "proofPurpose": "authentication",
+        "proofValue": signature.to_bytes().to_base58(),
     }))
 }
 

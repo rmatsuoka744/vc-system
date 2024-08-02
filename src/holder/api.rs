@@ -20,6 +20,6 @@ pub async fn get_credentials(holder: web::Data<Arc<Holder>>) -> impl Responder {
 pub async fn create_presentation(holder: web::Data<Arc<Holder>>, request: web::Json<PresentationRequest>) -> impl Responder {
     match holder.create_presentation(request.into_inner()) {
         Ok(presentation) => HttpResponse::Ok().json(presentation),
-        Err(e) => HttpResponse::BadRequest().body(e),
+        Err(e) => HttpResponse::BadRequest().body(format!("Failed to create presentation: {}", e)),
     }
 }

@@ -1,6 +1,9 @@
-use std::sync::Arc;
-use crate::models::credential::{CredentialResponse, PresentationRequest, VerifiablePresentation};
 use super::storage::Storage;
+use crate::models::credential::{CredentialResponse, PresentationRequest, VerifiablePresentation};
+use crate::utils::crypto;
+use std::sync::Arc;
+
+use log::{debug, info};
 
 #[derive(Clone)]
 pub struct Holder {
@@ -9,44 +12,90 @@ pub struct Holder {
 
 impl Holder {
     pub fn new(storage: Arc<dyn Storage>) -> Self {
+        info!("Creating new Holder instance");
         Holder { storage }
     }
 
     pub fn store_credential(&self, credential: CredentialResponse) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
+        debug!("Storing credential with generated ID: {}", id);
         self.storage.store(id.clone(), credential)?;
+        info!("Credential stored successfully with ID: {}", id);
         Ok(id)
     }
 
     pub fn get_credentials(&self) -> Result<Vec<CredentialResponse>, String> {
-        self.storage.get_all()
+        debug!("Retrieving all credentials");
+        let credentials = self.storage.get_all()?;
+        info!("Retrieved {} credentials", credentials.len());
+        Ok(credentials)
     }
 
-    pub fn create_presentation(&self, request: PresentationRequest) -> Result<VerifiablePresentation, String> {
+    pub fn create_presentation(
+        &self,
+        request: PresentationRequest,
+    ) -> Result<VerifiablePresentation, String> {
+        info!(
+            "Creating presentation with {} credentials",
+            request.verifiable_credential.len()
+        );
         let mut selected_credentials = Vec::new();
-        for id in &request.credential_ids {
+        for id in &request.verifiable_credential {
+            debug!("Retrieving credential with ID: {}", id);
             if let Some(credential) = self.storage.get(id)? {
                 selected_credentials.push(credential);
+                debug!("Credential {} added to presentation", id);
             } else {
+                info!("Credential with id {} not found", id);
                 return Err(format!("Credential with id {} not found", id));
             }
         }
 
-        Ok(VerifiablePresentation {
+        let mut presentation = VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: selected_credentials,
             proof: None,
-        })
+        };
+
+        debug!("Creating presentation JSON for signing");
+        let presentation_json = serde_json::to_value(&presentation).map_err(|e| {
+            info!("Failed to serialize presentation: {}", e);
+            e.to_string()
+        })?;
+
+        debug!("Generating signature for presentation");
+        let mut proof = crypto::sign_json(&presentation_json)?;
+
+        debug!("Adding domain and challenge to proof");
+        if let Some(proof_obj) = proof.as_object_mut() {
+            proof_obj.insert(
+                "domain".to_string(),
+                serde_json::Value::String(request.domain.clone()),
+            );
+            proof_obj.insert(
+                "challenge".to_string(),
+                serde_json::Value::String(request.challenge.clone()),
+            );
+            debug!("Domain and challenge added to proof");
+        } else {
+            info!("Failed to create proof: proof is not an object");
+            return Err("Failed to create proof".to_string());
+        }
+
+        presentation.proof = Some(proof);
+        info!("Presentation created successfully");
+
+        Ok(presentation)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::holder::api;
     use crate::holder::storage::test_storage::TestStorage;
     use actix_web::{test, web, App};
-    use crate::holder::api;
 
     fn setup_test_holder() -> Holder {
         Holder::new(Arc::new(TestStorage::new()))
@@ -91,7 +140,7 @@ mod tests {
         let credential_id = holder.store_credential(credential).unwrap();
 
         let request = PresentationRequest {
-            credential_ids: vec![credential_id],
+            verifiable_credential: vec![credential_id],
             challenge: "challenge".to_string(),
             domain: "example.com".to_string(),
         };
@@ -101,17 +150,21 @@ mod tests {
 
         let presentation = result.unwrap();
         assert_eq!(presentation.verifiable_credential.len(), 1);
-        assert_eq!(presentation.verifiable_credential[0].issuer, "did:example:123");
+        assert_eq!(
+            presentation.verifiable_credential[0].issuer,
+            "did:example:123"
+        );
     }
 
     #[actix_web::test]
     async fn test_store_credential_api() {
         let holder = Arc::new(setup_test_holder());
 
-        let app = test::init_service(
-            App::new().app_data(web::Data::new(holder.clone()))
-                .service(web::resource("/credentials").route(web::post().to(api::store_credential)))
-        ).await;
+        let app =
+            test::init_service(App::new().app_data(web::Data::new(holder.clone())).service(
+                web::resource("/credentials").route(web::post().to(api::store_credential)),
+            ))
+            .await;
 
         let credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
@@ -141,9 +194,11 @@ mod tests {
         let holder = Arc::new(setup_test_holder());
 
         let app = test::init_service(
-            App::new().app_data(web::Data::new(holder.clone()))
-                .service(web::resource("/credentials").route(web::get().to(api::get_credentials)))
-        ).await;
+            App::new()
+                .app_data(web::Data::new(holder.clone()))
+                .service(web::resource("/credentials").route(web::get().to(api::get_credentials))),
+        )
+        .await;
 
         // First, store a credential
         let credential = CredentialResponse {
