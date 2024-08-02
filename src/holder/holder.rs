@@ -34,7 +34,7 @@ impl Holder {
 
         Ok(VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-            presentation_type: vec!["VerifiablePresentation".to_string()],
+            types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: selected_credentials,
             proof: None,
         })
@@ -59,7 +59,7 @@ mod tests {
         let credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("test_id".to_string()),
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "did:example:123".to_string(),
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
@@ -81,7 +81,7 @@ mod tests {
         let credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("test_id".to_string()),
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "did:example:123".to_string(),
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
@@ -116,7 +116,7 @@ mod tests {
         let credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("test_id".to_string()),
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "did:example:123".to_string(),
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
@@ -149,7 +149,7 @@ mod tests {
         let credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("test_id".to_string()),
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "did:example:123".to_string(),
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),

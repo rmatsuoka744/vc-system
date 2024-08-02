@@ -52,7 +52,7 @@ mod tests {
         CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("http://example.edu/credentials/3732".to_string()),
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "https://example.edu/issuers/14".to_string(),
             issuance_date: "2010-01-01T19:23:24Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:ebfeb1f712ebc6f1c276e12ec21", "degree": {"type": "BachelorDegree", "name": "Bachelor of Science in Mechanical Engineering"}}),
@@ -77,7 +77,7 @@ mod tests {
         let credential = create_test_credential();
         let presentation = VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-            presentation_type: vec!["VerifiablePresentation".to_string()],
+            types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: vec![credential],
             proof: Some(serde_json::json!({
                 "type": "Ed25519Signature2018",
@@ -120,7 +120,7 @@ mod tests {
         let credential = create_test_credential();
         let presentation = VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-            presentation_type: vec!["VerifiablePresentation".to_string()],
+            types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: vec![credential],
             proof: Some(serde_json::json!({
                 "type": "Ed25519Signature2018",

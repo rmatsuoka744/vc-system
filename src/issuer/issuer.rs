@@ -16,7 +16,7 @@ pub fn create_credential(request: CredentialRequest) -> Result<CredentialRespons
     let mut credential = CredentialResponse {
         context: request.context,
         id: Some(format!("http://example.edu/credentials/{}", credential_id)),
-        credential_type: request.credential_type,
+        types: request.types,
         issuer: request.issuer,
         issuance_date: Utc::now().to_rfc3339(),
         credential_subject: request.credential_subject,
@@ -45,7 +45,7 @@ pub fn get_metadata() -> Result<IssuerMetadata, String> {
 fn is_valid_credential_request(request: &CredentialRequest) -> bool {
     // Implement validation logic
     // For example, check if all required fields are present and in correct format
-    !request.context.is_empty() && !request.credential_type.is_empty() && !request.issuer.is_empty()
+    !request.context.is_empty() && !request.types.is_empty() && !request.issuer.is_empty()
 }
 
 fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value, String> {
@@ -57,7 +57,6 @@ fn sign_credential(credential: &CredentialResponse) -> Result<serde_json::Value,
         .map_err(|e| format!("Failed to sign credential: {}", e))
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,11 +64,11 @@ mod tests {
     use crate::issuer::api;
 
     // 単体テスト
-    #[test]
+    #[tokio::test]
     async fn test_create_credential() {
         let request = CredentialRequest {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-            credential_type: vec!["VerifiableCredential".to_string()],
+            types: vec!["VerifiableCredential".to_string()],
             issuer: "did:example:123".to_string(),
             issuance_date: Utc::now().to_rfc3339(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
@@ -83,7 +82,7 @@ mod tests {
         assert!(credential.proof.is_some());
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_get_metadata() {
         let result = get_metadata();
         assert!(result.is_ok());
@@ -104,7 +103,7 @@ mod tests {
             .uri("/credentials")
             .set_json(CredentialRequest {
                 context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-                credential_type: vec!["VerifiableCredential".to_string()],
+                types: vec!["VerifiableCredential".to_string()],
                 issuer: "did:example:123".to_string(),
                 issuance_date: Utc::now().to_rfc3339(),
                 credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
