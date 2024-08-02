@@ -18,4 +18,6 @@ pub enum IssuerError {
     SigningError(String),
     #[error("Serialization error: {0}")]
     SerializationError(String),
+    #[error("Schema validation error: {0}")]
+    SchemaValidationError(String),
 }
