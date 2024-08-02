@@ -1,51 +1,36 @@
+use crate::models::schema::{CredentialSchema, PropertyType};
+use crate::issuer::error::IssuerError;
 use serde_json::Value;
-use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
-pub struct CredentialSchema {
-    pub id: String,
-    pub type_name: String,
-    pub properties: HashMap<String, PropertyType>,
-    pub required: Vec<String>,
+pub fn get_schema(credential_type: &str) -> Option<CredentialSchema> {
+    match credential_type {
+        "UniversityDegreeCredential" => Some(crate::models::schema::get_university_degree_schema()),
+        "EmploymentCredential" => Some(crate::models::schema::get_employment_credential_schema()),
+        _ => None,
+    }
 }
 
-#[derive(Clone, Debug)]
-pub enum PropertyType {
-    String,
-    Number,
-    Boolean,
-    Object,
-    Array,
-}
-
-impl CredentialSchema {
-    pub fn validate(&self, credential_subject: &Value) -> Result<(), String> {
-        if let Value::Object(subject) = credential_subject {
-            // Check required fields
-            for field in &self.required {
-                if !subject.contains_key(field) {
-                    return Err(format!("Missing required field: {}", field));
-                }
-            }
-
-            // Validate each property
-            for (key, value) in subject {
-                if let Some(property_type) = self.properties.get(key) {
-                    match (property_type, value) {
-                        (PropertyType::String, Value::String(_)) => {},
-                        (PropertyType::Number, Value::Number(_)) => {},
-                        (PropertyType::Boolean, Value::Bool(_)) => {},
-                        (PropertyType::Object, Value::Object(_)) => {},
-                        (PropertyType::Array, Value::Array(_)) => {},
-                        _ => return Err(format!("Invalid type for field: {}", key)),
-                    }
-                } else {
-                    return Err(format!("Unknown field: {}", key));
-                }
-            }
-            Ok(())
-        } else {
-            Err("Credential subject must be an object".to_string())
+pub fn validate_credential_subject(subject: &Value, schema: &CredentialSchema) -> Result<(), IssuerError> {
+    for field in &schema.required {
+        if !subject.get(field).is_some() {
+            return Err(IssuerError::SchemaValidationError(format!("Missing required field: {}", field)));
         }
     }
+
+    for (key, value) in subject.as_object().unwrap() {
+        if let Some(property_type) = schema.properties.get(key) {
+            match (property_type, value) {
+                (PropertyType::String, Value::String(_)) => {},
+                (PropertyType::Number, Value::Number(_)) => {},
+                (PropertyType::Boolean, Value::Bool(_)) => {},
+                (PropertyType::Object, Value::Object(_)) => {},
+                (PropertyType::Array, Value::Array(_)) => {},
+                _ => return Err(IssuerError::SchemaValidationError(format!("Invalid type for field: {}", key))),
+            }
+        } else {
+            return Err(IssuerError::SchemaValidationError(format!("Unknown field: {}", key)));
+        }
+    }
+
+    Ok(())
 }
