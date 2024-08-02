@@ -10,4 +10,6 @@ pub enum IssuerError {
     SerializationError(String),
     #[error("Signing error: {0}")]
     SigningError(String),
+    #[error("Crypto error: {0}")]
+    CryptoError(String),
 }

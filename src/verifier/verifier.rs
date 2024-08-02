@@ -1,145 +1,186 @@
 use crate::models::credential::{CredentialResponse, VerifiablePresentation};
 use crate::utils::crypto;
+use log::debug;
 
 pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, String> {
-    // 1. Check if the issuer is trusted (this would typically involve checking against a list of trusted issuers)
+    debug!("Verifying credential: {:?}", credential);
+
+    let credential_without_proof = {
+        let mut cred = credential.clone();
+        cred.proof = None;
+        cred
+    };
+
+    let proof = credential.proof.as_ref().ok_or("Proof is missing")?;
+
+    crypto::verify_signature(&credential_without_proof, proof)?;
+
+    // 2. 発行者の検証 (ここでは簡略化していますが、実際にはDIDの解決などが必要です)
     if !is_trusted_issuer(&credential.issuer) {
-        return Ok(false);
+        return Err("Untrusted issuer".to_string());
     }
 
-    // 2. Verify the credential's signature
-    match &credential.proof {
-        Some(proof) => crypto::verify_signature(&credential, proof),
-        None => Ok(false),
-    }
+    // 3. その他の検証 (有効期限、失効状態など)
+    // ...
+
+    Ok(true)
 }
 
 pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool, String> {
-    // 1. Verify the presentation's signature
-    let presentation_valid = match &presentation.proof {
-        Some(proof) => crypto::verify_signature(presentation, proof)?,
-        None => false,
+    debug!("Verifying presentation: {:?}", presentation);
+
+    let presentation_without_proof = {
+        let mut pres = presentation.clone();
+        pres.proof = None;
+        pres
     };
 
-    if !presentation_valid {
-        return Ok(false);
-    }
+    let proof = presentation.proof.as_ref().ok_or("Proof is missing")?;
 
-    // 2. Verify each credential in the presentation
+    crypto::verify_signature(&presentation_without_proof, proof)?;
+
+    // 2. 含まれる各資格情報の検証
     for credential in &presentation.verifiable_credential {
-        if !verify_credential(credential)? {
-            return Ok(false);
-        }
+        verify_credential(credential)?;
     }
 
     Ok(true)
 }
 
 fn is_trusted_issuer(_issuer: &str) -> bool {
-    // 実装...
+    // 実際の実装では、信頼できる発行者のリストをチェックします
     true
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::credential::{CredentialResponse, VerifiablePresentation};
-    use actix_web::{test, web, App};
+    use crate::utils::crypto;
     use crate::verifier::api;
+    use actix_web::{test, web, App};
+    use chrono::Utc;
+    use log::debug;
 
     fn create_test_credential() -> CredentialResponse {
-        CredentialResponse {
+        let mut credential = CredentialResponse {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             id: Some("http://example.edu/credentials/3732".to_string()),
-            types: vec!["VerifiableCredential".to_string()],
-            issuer: "https://example.edu/issuers/14".to_string(),
-            issuance_date: "2010-01-01T19:23:24Z".to_string(),
-            credential_subject: serde_json::json!({"id": "did:example:ebfeb1f712ebc6f1c276e12ec21", "degree": {"type": "BachelorDegree", "name": "Bachelor of Science in Mechanical Engineering"}}),
-            proof: Some(serde_json::json!({
-                "type": "Ed25519Signature2018",
-                "created": "2021-03-19T15:30:15Z",
-                "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..PT8yCqVjj5ZHD1MkV4OtQXc-oa0_Azf9OaDPyHKQWALb3b-j9wj5oO2-RZvB0Lr_uy7yFXwAl6bwqEDP8YkTAQ"
-            })),
-        }
+            types: vec![
+                "VerifiableCredential".to_string(),
+                "UniversityDegreeCredential".to_string(),
+            ],
+            issuer: "did:example:123".to_string(),
+            issuance_date: Utc::now().to_rfc3339(),
+            credential_subject: serde_json::json!({
+                "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+                "name": "Alice",
+                "degree": {
+                    "type": "BachelorDegree",
+                    "name": "Bachelor of Science in Mechanical Engineering"
+                }
+            }),
+            proof: None,
+        };
+
+        let credential_json = serde_json::to_value(&credential).unwrap();
+        debug!("Credential to sign: {:?}", credential_json);
+        let proof = crypto::sign_json(&credential_json).unwrap();
+        credential.proof = Some(proof);
+        debug!("Signed credential: {:?}", credential);
+        credential
     }
 
-    #[test]
+    #[actix_rt::test]
     async fn test_verify_credential() {
         let credential = create_test_credential();
+        debug!("Credential to verify: {:?}", credential);
         let result = verify_credential(&credential);
-        assert!(result.is_ok());
+        debug!("Verification result: {:?}", result);
+        assert!(result.is_ok(), "Verification failed: {:?}", result.err());
         assert!(result.unwrap());
     }
 
-    #[test]
+    #[actix_rt::test]
     async fn test_verify_presentation() {
         let credential = create_test_credential();
-        let presentation = VerifiablePresentation {
+        let mut presentation = VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: vec![credential],
-            proof: Some(serde_json::json!({
-                "type": "Ed25519Signature2018",
-                "created": "2021-03-19T15:30:15Z",
-                "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
-                "domain": "example.com",
-                "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..PT8yCqVjj5ZHD1MkV4OtQXc-oa0_Azf9OaDPyHKQWALb3b-j9wj5oO2-RZvB0Lr_uy7yFXwAl6bwqEDP8YkTAQ"
-            })),
+            proof: None,
         };
+
+        let presentation_json = serde_json::to_value(&presentation).unwrap();
+        debug!("Presentation to sign: {:?}", presentation_json);
+        let proof = crypto::sign_json(&presentation_json).unwrap();
+        presentation.proof = Some(proof);
+
+        debug!("Presentation to verify: {:?}", presentation);
         let result = verify_presentation(&presentation);
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Verification failed: {:?}", result.err());
         assert!(result.unwrap());
     }
 
-    #[actix_web::test]
+    #[actix_rt::test]
     async fn test_verify_credential_api() {
-        let app = test::init_service(
-            App::new().service(web::resource("/verify/credential").route(web::post().to(api::verify_credential)))
-        ).await;
+        let app = test::init_service(App::new().service(
+            web::resource("/verify/credential").route(web::post().to(api::verify_credential)),
+        ))
+        .await;
 
         let credential = create_test_credential();
+        debug!("Credential to verify via API: {:?}", credential);
         let req = test::TestRequest::post()
             .uri("/verify/credential")
             .set_json(&credential)
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
+        assert!(
+            resp.status().is_success(),
+            "API call failed: {:?}",
+            resp.status()
+        );
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert_eq!(body["verified"], true);
+        assert_eq!(body["verified"], true, "Verification failed: {:?}", body);
     }
 
-    #[actix_web::test]
+    #[actix_rt::test]
     async fn test_verify_presentation_api() {
-        let app = test::init_service(
-            App::new().service(web::resource("/verify/presentation").route(web::post().to(api::verify_presentation)))
-        ).await;
+        let app = test::init_service(App::new().service(
+            web::resource("/verify/presentation").route(web::post().to(api::verify_presentation)),
+        ))
+        .await;
 
         let credential = create_test_credential();
-        let presentation = VerifiablePresentation {
+        let mut presentation = VerifiablePresentation {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
             types: vec!["VerifiablePresentation".to_string()],
             verifiable_credential: vec![credential],
-            proof: Some(serde_json::json!({
-                "type": "Ed25519Signature2018",
-                "created": "2021-03-19T15:30:15Z",
-                "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
-                "domain": "example.com",
-                "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..PT8yCqVjj5ZHD1MkV4OtQXc-oa0_Azf9OaDPyHKQWALb3b-j9wj5oO2-RZvB0Lr_uy7yFXwAl6bwqEDP8YkTAQ"
-            })),
+            proof: None,
         };
 
+        let presentation_json = serde_json::to_value(&presentation).unwrap();
+        debug!("Presentation to sign: {:?}", presentation_json);
+        let proof = crypto::sign_json(&presentation_json).unwrap();
+        presentation.proof = Some(proof);
+
+        debug!("Presentation to verify via API: {:?}", presentation);
         let req = test::TestRequest::post()
             .uri("/verify/presentation")
             .set_json(&presentation)
             .to_request();
 
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
+        assert!(
+            resp.status().is_success(),
+            "API call failed: {:?}",
+            resp.status()
+        );
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert_eq!(body["verified"], true);
+        assert_eq!(body["verified"], true, "Verification failed: {:?}", body);
     }
 }

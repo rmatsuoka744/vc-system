@@ -1,38 +1,39 @@
-# 検証可能な資格証明（Verifiable Credentials）API ドキュメント
+# Verifiable Credentials API ドキュメンテーション
 
-このドキュメントは、W3C 検証可能な資格証明データモデル 1.1 に準拠した Verifiable Credentials API の使用方法を説明します。
+## 1. Issuer API
 
-## ベース URL
+### 1.1 クレデンシャル発行
 
-すべての API リクエストは以下の URL に対して行われます：`http://localhost:8080`
-
-## Issuer API
-
-### 1. VCの発行
+新しいVerifiable Credentialを発行します。
 
 **エンドポイント:** `POST /issuer/credentials`
 
-**リクエスト本文:**
-```json
-{
-  "@context": [
-    "https://www.w3.org/2018/credentials/v1",
-    "https://www.w3.org/2018/credentials/examples/v1"
-  ],
-  "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-  "issuer": "https://example.edu/issuers/14",
-  "issuanceDate": "2023-06-01T19:23:24Z",
-  "credentialSubject": {
-    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-    "degree": {
-      "type": "BachelorDegree",
-      "name": "Bachelor of Science in Mechanical Engineering"
-    }
-  }
-}
+**リクエスト例:**
+
+```bash
+curl -X POST http://localhost:8080/issuer/credentials \
+     -H "Content-Type: application/json" \
+     -d '{
+       "@context": [
+         "https://www.w3.org/2018/credentials/v1",
+         "https://www.w3.org/2018/credentials/examples/v1"
+       ],
+       "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+       "issuer": "did:example:123",
+       "issuanceDate": "2023-06-01T19:23:24Z",
+       "credentialSubject": {
+         "id": "did:example:456",
+         "name": "Alice Johnson",
+         "degree": {
+           "type": "BachelorDegree",
+           "name": "Bachelor of Science in Mechanical Engineering"
+         }
+       }
+     }'
 ```
 
-**期待される応答:**
+**レスポンス例:**
+
 ```json
 {
   "@context": [
@@ -41,10 +42,11 @@
   ],
   "id": "http://example.edu/credentials/3732",
   "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-  "issuer": "https://example.edu/issuers/14",
+  "issuer": "did:example:123",
   "issuanceDate": "2023-06-01T19:23:24Z",
   "credentialSubject": {
-    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+    "id": "did:example:456",
+    "name": "Alice Johnson",
     "degree": {
       "type": "BachelorDegree",
       "name": "Bachelor of Science in Mechanical Engineering"
@@ -53,18 +55,27 @@
   "proof": {
     "type": "Ed25519Signature2020",
     "created": "2023-06-01T19:23:24Z",
-    "verificationMethod": "https://example.edu/issuers/14#key-1",
+    "verificationMethod": "did:example:123#key-1",
     "proofPurpose": "assertionMethod",
     "proofValue": "z58DAdkxz7A..."
   }
 }
 ```
 
-### 2. Issuerのメタデータ取得
+### 1.2 Issuerメタデータ取得
+
+Issuerのメタデータを取得します。
 
 **エンドポイント:** `GET /issuer/metadata`
 
-**期待される応答:**
+**リクエスト例:**
+
+```bash
+curl http://localhost:8080/issuer/metadata
+```
+
+**レスポンス例:**
+
 ```json
 {
   "id": "did:example:123",
@@ -77,66 +88,124 @@
 }
 ```
 
-## Holder API
+## 2. Holder API
 
-### 1. VCの保存
+### 2.1 クレデンシャル保存
+
+受け取ったVerifiable Credentialを保存します。
 
 **エンドポイント:** `POST /holder/credentials`
 
-**リクエスト本文:** 
+**リクエスト例:**
+
+```bash
+curl -X POST http://localhost:8080/holder/credentials \
+     -H "Content-Type: application/json" \
+     -d '{
+       "@context": [
+         "https://www.w3.org/2018/credentials/v1",
+         "https://www.w3.org/2018/credentials/examples/v1"
+       ],
+       "id": "http://example.edu/credentials/3732",
+       "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+       "issuer": "did:example:123",
+       "issuanceDate": "2023-06-01T19:23:24Z",
+       "credentialSubject": {
+         "id": "did:example:456",
+         "name": "Alice Johnson",
+         "degree": {
+           "type": "BachelorDegree",
+           "name": "Bachelor of Science in Mechanical Engineering"
+         }
+       },
+       "proof": {
+         "type": "Ed25519Signature2020",
+         "created": "2023-06-01T19:23:24Z",
+         "verificationMethod": "did:example:123#key-1",
+         "proofPurpose": "assertionMethod",
+         "proofValue": "z58DAdkxz7A..."
+       }
+     }'
+```
+
+**レスポンス例:**
+
 ```json
 {
-  "@context": [
-    "https://www.w3.org/2018/credentials/v1",
-    "https://www.w3.org/2018/credentials/examples/v1"
-  ],
-  "id": "http://example.edu/credentials/3732",
-  "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-  "issuer": "https://example.edu/issuers/14",
-  "issuanceDate": "2023-06-01T19:23:24Z",
-  "credentialSubject": {
-    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-    "degree": {
-      "type": "BachelorDegree",
-      "name": "Bachelor of Science in Mechanical Engineering"
-    }
-  },
-  "proof": {
-    "type": "Ed25519Signature2020",
-    "created": "2023-06-01T19:23:24Z",
-    "verificationMethod": "https://example.edu/issuers/14#key-1",
-    "proofPurpose": "assertionMethod",
-    "proofValue": "z58DAdkxz7A..."
-  }
+  "status": "success",
+  "message": "Credential stored successfully"
 }
 ```
 
-**期待される応答:**
-```json
-{
-  "id": "91cf9bc2-1901-4948-9889-4f8819e379e2",
-  "status": "stored"
-}
-```
+### 2.2 保存されたクレデンシャル一覧取得
 
-### 2. 保存されたVCの取得
+Holderが保存しているクレデンシャルの一覧を取得します。
 
 **エンドポイント:** `GET /holder/credentials`
 
-**期待される応答:**
+**リクエスト例:**
+
+```bash
+curl http://localhost:8080/holder/credentials
+```
+
+**レスポンス例:**
+
 ```json
-[
-  {
+{
+  "credentials": [
+    {
+      "id": "http://example.edu/credentials/3732",
+      "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+      "issuer": "did:example:123",
+      "issuanceDate": "2023-06-01T19:23:24Z"
+    },
+    {
+      "id": "http://example.com/credentials/1234",
+      "type": ["VerifiableCredential", "EmploymentCredential"],
+      "issuer": "did:example:789",
+      "issuanceDate": "2023-05-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### 2.3 プレゼンテーション作成
+
+保存されているクレデンシャルを使用してVerifiable Presentationを作成します。
+
+**エンドポイント:** `POST /holder/presentations`
+
+**リクエスト例:**
+
+```bash
+curl -X POST http://localhost:8080/holder/presentations \
+     -H "Content-Type: application/json" \
+     -d '{
+       "verifiableCredential": ["http://example.edu/credentials/3732"],
+       "domain": "example.com",
+       "challenge": "1f44d55f-f161-4938-a659-f8026467f126"
+     }'
+```
+
+**レスポンス例:**
+
+```json
+{
+  "@context": ["https://www.w3.org/2018/credentials/v1"],
+  "type": ["VerifiablePresentation"],
+  "verifiableCredential": [{
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
       "https://www.w3.org/2018/credentials/examples/v1"
     ],
     "id": "http://example.edu/credentials/3732",
     "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-    "issuer": "https://example.edu/issuers/14",
+    "issuer": "did:example:123",
     "issuanceDate": "2023-06-01T19:23:24Z",
     "credentialSubject": {
-      "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
+      "id": "did:example:456",
+      "name": "Alice Johnson",
       "degree": {
         "type": "BachelorDegree",
         "name": "Bachelor of Science in Mechanical Engineering"
@@ -145,145 +214,126 @@
     "proof": {
       "type": "Ed25519Signature2020",
       "created": "2023-06-01T19:23:24Z",
-      "verificationMethod": "https://example.edu/issuers/14#key-1",
+      "verificationMethod": "did:example:123#key-1",
       "proofPurpose": "assertionMethod",
       "proofValue": "z58DAdkxz7A..."
     }
-  }
-]
-```
-
-### 3. プレゼンテーションの作成
-
-**エンドポイント:** `POST /holder/presentations`
-
-**リクエスト本文:**
-```json
-{
-  "verifiableCredential": ["http://example.edu/credentials/3732"],
-  "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
-  "domain": "example.com"
-}
-```
-
-**期待される応答:**
-```json
-{
-  "@context": ["https://www.w3.org/2018/credentials/v1"],
-  "type": ["VerifiablePresentation"],
-  "verifiableCredential": [
-    {
-      "@context": [
-        "https://www.w3.org/2018/credentials/v1",
-        "https://www.w3.org/2018/credentials/examples/v1"
-      ],
-      "id": "http://example.edu/credentials/3732",
-      "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-      "issuer": "https://example.edu/issuers/14",
-      "issuanceDate": "2023-06-01T19:23:24Z",
-      "credentialSubject": {
-        "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-        "degree": {
-          "type": "BachelorDegree",
-          "name": "Bachelor of Science in Mechanical Engineering"
-        }
-      },
-      "proof": {
-        "type": "Ed25519Signature2020",
-        "created": "2023-06-01T19:23:24Z",
-        "verificationMethod": "https://example.edu/issuers/14#key-1",
-        "proofPurpose": "assertionMethod",
-        "proofValue": "z58DAdkxz7A..."
-      }
-    }
-  ]
-}
-```
-
-## Verifier API
-
-### 1. VCの検証
-
-**エンドポイント:** `POST /verifier/verify/credential`
-
-**リクエスト本文:**
-```json
-{
-  "@context": [
-    "https://www.w3.org/2018/credentials/v1",
-    "https://www.w3.org/2018/credentials/examples/v1"
-  ],
-  "id": "http://example.edu/credentials/3732",
-  "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-  "issuer": "https://example.edu/issuers/14",
-  "issuanceDate": "2023-06-01T19:23:24Z",
-  "credentialSubject": {
-    "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-    "degree": {
-      "type": "BachelorDegree",
-      "name": "Bachelor of Science in Mechanical Engineering"
-    }
-  },
+  }],
   "proof": {
     "type": "Ed25519Signature2020",
-    "created": "2023-06-01T19:23:24Z",
-    "verificationMethod": "https://example.edu/issuers/14#key-1",
-    "proofPurpose": "assertionMethod",
-    "proofValue": "z58DAdkxz7A..."
+    "created": "2023-06-02T12:00:00Z",
+    "verificationMethod": "did:example:456#key-1",
+    "proofPurpose": "authentication",
+    "proofValue": "z6MkhaXgBZD...",
+    "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
+    "domain": "example.com"
   }
 }
 ```
 
-**期待される応答:**
+## 3. Verifier API
+
+### 3.1 クレデンシャル検証
+
+Verifiable Credentialの検証を行います。
+
+**エンドポイント:** `POST /verifier/credentials`
+
+**リクエスト例:**
+
+```bash
+curl -X POST http://localhost:8080/verifier/credentials \
+     -H "Content-Type: application/json" \
+     -d '{
+       "@context": [
+         "https://www.w3.org/2018/credentials/v1",
+         "https://www.w3.org/2018/credentials/examples/v1"
+       ],
+       "id": "http://example.edu/credentials/3732",
+       "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+       "issuer": "did:example:123",
+       "issuanceDate": "2023-06-01T19:23:24Z",
+       "credentialSubject": {
+         "id": "did:example:456",
+         "name": "Alice Johnson",
+         "degree": {
+           "type": "BachelorDegree",
+           "name": "Bachelor of Science in Mechanical Engineering"
+         }
+       },
+       "proof": {
+         "type": "Ed25519Signature2020",
+         "created": "2023-06-01T19:23:24Z",
+         "verificationMethod": "did:example:123#key-1",
+         "proofPurpose": "assertionMethod",
+         "proofValue": "z58DAdkxz7A..."
+       }
+     }'
+```
+
+**レスポンス例:**
+
 ```json
 {
-  "errors": [],
   "verified": true
 }
 ```
 
-### 2. プレゼンテーションの検証
+### 3.2 プレゼンテーション検証
 
-**エンドポイント:** `POST /verifier/verify/presentation`
+Verifiable Presentationの検証を行います。
 
-**リクエスト本文:**
-```json
-{
-  "@context": ["https://www.w3.org/2018/credentials/v1"],
-  "type": ["VerifiablePresentation"],
-  "verifiableCredential": [
-    {
-      "@context": [
-        "https://www.w3.org/2018/credentials/v1",
-        "https://www.w3.org/2018/credentials/examples/v1"
-      ],
-      "id": "http://example.edu/credentials/3732",
-      "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-      "issuer": "https://example.edu/issuers/14",
-      "issuanceDate": "2023-06-01T19:23:24Z",
-      "credentialSubject": {
-        "id": "did:example:ebfeb1f712ebc6f1c276e12ec21",
-        "degree": {
-          "type": "BachelorDegree",
-          "name": "Bachelor of Science in Mechanical Engineering"
-        }
-      },
-      "proof": {
-        "type": "Ed25519Signature2020",
-        "created": "2023-06-01T19:23:24Z",
-        "verificationMethod": "https://example.edu/issuers/14#key-1",
-        "proofPurpose": "assertionMethod",
-        "proofValue": "z58DAdkxz7A..."
-      }
-    }
-  ]
-}
+**エンドポイント:** `POST /verifier/presentations`
+
+**リクエスト例:**
+
+```bash
+curl -X POST http://localhost:8080/verifier/presentations \
+     -H "Content-Type: application/json" \
+     -d '{
+       "@context": ["https://www.w3.org/2018/credentials/v1"],
+       "type": ["VerifiablePresentation"],
+       "verifiableCredential": [{
+         "@context": [
+           "https://www.w3.org/2018/credentials/v1",
+           "https://www.w3.org/2018/credentials/examples/v1"
+         ],
+         "id": "http://example.edu/credentials/3732",
+         "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+         "issuer": "did:example:123",
+         "issuanceDate": "2023-06-01T19:23:24Z",
+         "credentialSubject": {
+           "id": "did:example:456",
+           "name": "Alice Johnson",
+           "degree": {
+             "type": "BachelorDegree",
+             "name": "Bachelor of Science in Mechanical Engineering"
+           }
+         },
+         "proof": {
+           "type": "Ed25519Signature2020",
+           "created": "2023-06-01T19:23:24Z",
+           "verificationMethod": "did:example:123#key-1",
+           "proofPurpose": "assertionMethod",
+           "proofValue": "z58DAdkxz7A..."
+         }
+       }],
+       "proof": {
+         "type": "Ed25519Signature2020",
+         "created": "2023-06-02T12:00:00Z",
+         "verificationMethod": "did:example:456#key-1",
+         "proofPurpose": "authentication",
+         "proofValue": "z6MkhaXgBZD...",
+         "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
+         "domain": "example.com"
+       }
+     }'
 ```
 
-**期待される応答:**
+**レスポンス例:**
+
 ```json
 {
-  "errors": [],
   "verified": true
 }
 ```
