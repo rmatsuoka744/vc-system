@@ -1,4 +1,5 @@
 use thiserror::Error;
+use crate::utils::error::UtilsError;
 
 #[derive(Error, Debug)]
 pub enum IssuerError {
@@ -10,8 +11,12 @@ pub enum IssuerError {
     SerializationError(String),
     #[error("Signing error: {0}")]
     SigningError(String),
-    #[error("Crypto error: {0}")]
-    CryptoError(String),
+    #[error("JWT creation error: {0}")]
+    JwtCreationError(String),
+    #[error("Invalid SD-JWT format")]
+    InvalidSdJwtFormat,
+    #[error("Utils error: {0}")]
+    UtilsError(#[from] UtilsError),
 }
 
 impl From<String> for IssuerError {

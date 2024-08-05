@@ -10,7 +10,7 @@ pub fn get_schema(credential_type: &str) -> Option<CredentialSchema> {
             type_name: "UniversityDegreeCredential".to_string(),
             properties: {
                 let mut props = HashMap::new();
-                props.insert("id".to_string(), PropertyType::String); // Add this line
+                props.insert("id".to_string(), PropertyType::String);
                 props.insert("name".to_string(), PropertyType::String);
                 props.insert("degree".to_string(), PropertyType::Object);
                 props
@@ -22,11 +22,12 @@ pub fn get_schema(credential_type: &str) -> Option<CredentialSchema> {
             type_name: "SDJWTCredential".to_string(),
             properties: {
                 let mut props = HashMap::new();
-                props.insert("id".to_string(), PropertyType::String); // Add this line
+                props.insert("id".to_string(), PropertyType::String);
                 props.insert("given_name".to_string(), PropertyType::String);
                 props.insert("family_name".to_string(), PropertyType::String);
                 props.insert("email".to_string(), PropertyType::String);
                 props.insert("birthdate".to_string(), PropertyType::String);
+                props.insert("degree".to_string(), PropertyType::Object);
                 props
             },
             required: vec!["given_name".to_string(), "family_name".to_string()],
@@ -40,7 +41,7 @@ pub fn validate_credential_subject(
     schema: &CredentialSchema,
 ) -> Result<(), IssuerError> {
     for field in &schema.required {
-        if !subject.get(field).is_some() {
+        if subject.get(field).is_none() {
             return Err(IssuerError::SchemaValidationError(format!(
                 "Missing required field: {}",
                 field
@@ -48,9 +49,12 @@ pub fn validate_credential_subject(
         }
     }
 
-    for (key, value) in subject.as_object().unwrap() {
-        if let Some(property_type) = schema.properties.get(key) {
-            match (property_type, value) {
+    for (key, value) in subject
+        .as_object()
+        .ok_or_else(|| IssuerError::SchemaValidationError("Invalid subject format".to_string()))?
+    {
+        match schema.properties.get(key) {
+            Some(property_type) => match (property_type, value) {
                 (PropertyType::String, Value::String(_)) => {}
                 (PropertyType::Number, Value::Number(_)) => {}
                 (PropertyType::Boolean, Value::Bool(_)) => {}
@@ -60,14 +64,15 @@ pub fn validate_credential_subject(
                     return Err(IssuerError::SchemaValidationError(format!(
                         "Invalid type for field: {}",
                         key
-                    )))
+                    )));
                 }
+            },
+            None => {
+                return Err(IssuerError::SchemaValidationError(format!(
+                    "Unknown field: {}",
+                    key
+                )));
             }
-        } else {
-            return Err(IssuerError::SchemaValidationError(format!(
-                "Unknown field: {}",
-                key
-            )));
         }
     }
 

@@ -1,10 +1,11 @@
 use crate::models::credential::{CredentialResponse, VerifiablePresentation};
 use crate::utils::crypto;
+use crate::verifier::error::VerifierError;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use log::{debug, error, info};
 use serde_json::Value;
 
-pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, String> {
+pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, VerifierError> {
     info!("Verifying credential: {:?}", credential);
 
     if let Some(sd_jwt) = &credential.sd_jwt {
@@ -14,7 +15,7 @@ pub fn verify_credential(credential: &CredentialResponse) -> Result<bool, String
     }
 }
 
-fn verify_vc_credential(credential: &CredentialResponse) -> Result<bool, String> {
+fn verify_vc_credential(credential: &CredentialResponse) -> Result<bool, VerifierError> {
     let credential_without_proof = {
         let mut cred = credential.clone();
         cred.proof = None;
@@ -22,45 +23,50 @@ fn verify_vc_credential(credential: &CredentialResponse) -> Result<bool, String>
     };
     info!("Credential without proof: {:?}", credential_without_proof);
 
-    let proof = credential.proof.as_ref().ok_or("Proof is missing")?;
+    let proof = credential
+        .proof
+        .as_ref()
+        .ok_or(VerifierError::MissingProof)?;
     info!("Proof: {:?}", proof);
 
     crypto::verify_vc(&credential_without_proof, proof).map_err(|e| {
         error!("Signature verification failed: {}", e);
-        e
+        VerifierError::SignatureVerificationFailed(e.to_string())
     })?;
 
     if !is_trusted_issuer(&credential.issuer) {
         error!("Untrusted issuer: {}", credential.issuer);
-        return Err("Untrusted issuer".to_string());
+        return Err(VerifierError::UntrustedIssuer);
     }
 
     Ok(true)
 }
 
-fn verify_sd_jwt_credential(sd_jwt: &str) -> Result<bool, String> {
+fn verify_sd_jwt_credential(sd_jwt: &str) -> Result<bool, VerifierError> {
     info!("Verifying SD-JWT: {}", sd_jwt);
-    
+
     let parts: Vec<&str> = sd_jwt.split('.').collect();
     if parts.len() != 3 {
-        return Err("Invalid SD-JWT format".to_string());
+        return Err(VerifierError::InvalidCredentialFormat);
     }
 
     let payload_json = URL_SAFE_NO_PAD
         .decode(parts[1])
-        .map_err(|_| "Invalid base64 encoding in payload")?;
+        .map_err(|_| VerifierError::InvalidBase64Encoding)?;
     let payload: Value =
-        serde_json::from_slice(&payload_json).map_err(|_| "Invalid JSON in payload")?;
+        serde_json::from_slice(&payload_json).map_err(|_| VerifierError::InvalidJsonPayload)?;
 
-    // SD-JWT特有の検証
     if payload.get("_sd_alg").is_none() {
-        return Err("Missing _sd_alg claim in SD-JWT".to_string());
+        return Err(VerifierError::MissingSdAlgClaim);
     }
 
-    crypto::verify_sd_jwt(sd_jwt)
+    crypto::verify_sd_jwt(sd_jwt).map_err(|e| {
+        error!("SD-JWT verification failed: {}", e);
+        VerifierError::SignatureVerificationFailed(e.to_string())
+    })
 }
 
-pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool, String> {
+pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool, VerifierError> {
     info!("Verifying presentation: {:?}", presentation);
 
     let presentation_without_proof = {
@@ -68,14 +74,20 @@ pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool
         pres.proof = None;
         pres
     };
-    info!("Presentation without proof: {:?}", presentation_without_proof);
+    info!(
+        "Presentation without proof: {:?}",
+        presentation_without_proof
+    );
 
-    let proof = presentation.proof.as_ref().ok_or("Proof is missing")?;
+    let proof = presentation
+        .proof
+        .as_ref()
+        .ok_or(VerifierError::MissingProof)?;
     info!("Presentation proof: {:?}", proof);
 
     crypto::verify_vc(&presentation_without_proof, proof).map_err(|e| {
         error!("Presentation signature verification failed: {}", e);
-        e
+        VerifierError::SignatureVerificationFailed(e.to_string())
     })?;
 
     for credential in &presentation.verifiable_credential {
@@ -87,12 +99,10 @@ pub fn verify_presentation(presentation: &VerifiablePresentation) -> Result<bool
 }
 
 fn is_trusted_issuer(issuer: &str) -> bool {
-    // 実際の実装では、信頼できる発行者のリストをチェックします
     debug!("Checking if issuer is trusted: {}", issuer);
     // TODO: Implement actual issuer trust verification
     true
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -147,56 +157,62 @@ mod tests {
             }),
             selective_disclosure: vec!["email".to_string(), "birthdate".to_string()],
         };
-    
+
         let sd_jwt_response = create_sd_jwt_credential(request).unwrap();
-    
+
         // sd_jwt_response は既に CredentialResponse 型なので、そのまま返せます
         sd_jwt_response
     }
-    
 
     #[actix_rt::test]
-async fn test_verify_credential() {
-    // 通常のVC形式のテスト
-    let credential = create_test_credential();
-    info!("Standard Credential to verify: {:?}", credential);
-    let result = verify_credential(&credential);
-    info!("Standard Credential Verification result: {:?}", result);
-    assert!(result.is_ok(), "Standard Credential Verification failed: {:?}", result.err());
-    assert!(result.unwrap());
+    async fn test_verify_credential() {
+        // 通常のVC形式のテスト
+        let credential = create_test_credential();
+        info!("Standard Credential to verify: {:?}", credential);
+        let result = verify_credential(&credential);
+        info!("Standard Credential Verification result: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Standard Credential Verification failed: {:?}",
+            result.err()
+        );
+        assert!(result.unwrap());
 
-    // SD-JWT形式のテスト
-    let sd_jwt_credential = create_test_sd_jwt_credential();
-    info!("SD-JWT Credential to verify: {:?}", sd_jwt_credential);
-    let result = verify_credential(&sd_jwt_credential);
-    info!("SD-JWT Credential Verification result: {:?}", result);
-    assert!(result.is_ok(), "SD-JWT Credential Verification failed: {:?}", result.err());
-    assert!(result.unwrap());
-}
+        // SD-JWT形式のテスト
+        let sd_jwt_credential = create_test_sd_jwt_credential();
+        info!("SD-JWT Credential to verify: {:?}", sd_jwt_credential);
+        let result = verify_credential(&sd_jwt_credential);
+        info!("SD-JWT Credential Verification result: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "SD-JWT Credential Verification failed: {:?}",
+            result.err()
+        );
+        assert!(result.unwrap());
+    }
 
-#[actix_rt::test]
-async fn test_verify_presentation() {
-    let credential = create_test_credential();
-    let mut presentation = VerifiablePresentation {
-        context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
-        types: vec!["VerifiablePresentation".to_string()],
-        verifiable_credential: vec![credential],
-        proof: None,
-    };
+    #[actix_rt::test]
+    async fn test_verify_presentation() {
+        let credential = create_test_credential();
+        let mut presentation = VerifiablePresentation {
+            context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
+            types: vec!["VerifiablePresentation".to_string()],
+            verifiable_credential: vec![credential],
+            proof: None,
+        };
 
-    let presentation_json = serde_json::to_value(&presentation).unwrap();
-    info!("Presentation to sign: {:?}", presentation_json);
-    let proof = crypto::sign_json(&presentation_json).unwrap();
-    presentation.proof = Some(proof.clone());
-    info!("Generated proof: {:?}", proof);
+        let presentation_json = serde_json::to_value(&presentation).unwrap();
+        info!("Presentation to sign: {:?}", presentation_json);
+        let proof = crypto::sign_json(&presentation_json).unwrap();
+        presentation.proof = Some(proof.clone());
+        info!("Generated proof: {:?}", proof);
 
-    info!("Presentation to verify: {:?}", presentation);
-    let result = verify_presentation(&presentation);
-    info!("Presentation verification result: {:?}", result);
-    assert!(result.is_ok(), "Verification failed: {:?}", result.err());
-    assert!(result.unwrap());
-}
-
+        info!("Presentation to verify: {:?}", presentation);
+        let result = verify_presentation(&presentation);
+        info!("Presentation verification result: {:?}", result);
+        assert!(result.is_ok(), "Verification failed: {:?}", result.err());
+        assert!(result.unwrap());
+    }
 
     #[actix_rt::test]
     async fn test_verify_credential_api() {

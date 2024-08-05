@@ -1,4 +1,5 @@
 use super::storage::Storage;
+use crate::holder::error::HolderError;
 use crate::models::credential::{CredentialResponse, PresentationRequest, VerifiablePresentation};
 use crate::utils::crypto;
 use std::sync::Arc;
@@ -16,17 +17,22 @@ impl Holder {
         Holder { storage }
     }
 
-    pub fn store_credential(&self, credential: CredentialResponse) -> Result<String, String> {
+    pub fn store_credential(&self, credential: CredentialResponse) -> Result<String, HolderError> {
         let id = uuid::Uuid::new_v4().to_string();
         debug!("Storing credential with generated ID: {}", id);
-        self.storage.store(id.clone(), credential)?;
+        self.storage
+            .store(id.clone(), credential)
+            .map_err(|e| HolderError::StorageError(e.to_string()))?;
         info!("Credential stored successfully with ID: {}", id);
         Ok(id)
     }
 
-    pub fn get_credentials(&self) -> Result<Vec<CredentialResponse>, String> {
+    pub fn get_credentials(&self) -> Result<Vec<CredentialResponse>, HolderError> {
         debug!("Retrieving all credentials");
-        let credentials = self.storage.get_all()?;
+        let credentials = self
+            .storage
+            .get_all()
+            .map_err(|e| HolderError::StorageError(e.to_string()))?;
         info!("Retrieved {} credentials", credentials.len());
         Ok(credentials)
     }
@@ -34,7 +40,7 @@ impl Holder {
     pub fn create_presentation(
         &self,
         request: PresentationRequest,
-    ) -> Result<VerifiablePresentation, String> {
+    ) -> Result<VerifiablePresentation, HolderError> {
         info!(
             "Creating presentation with {} credentials",
             request.verifiable_credential.len()
@@ -42,12 +48,16 @@ impl Holder {
         let mut selected_credentials = Vec::new();
         for id in &request.verifiable_credential {
             debug!("Retrieving credential with ID: {}", id);
-            if let Some(credential) = self.storage.get(id)? {
+            if let Some(credential) = self
+                .storage
+                .get(id)
+                .map_err(|e| HolderError::StorageError(e.to_string()))?
+            {
                 selected_credentials.push(credential);
                 debug!("Credential {} added to presentation", id);
             } else {
                 info!("Credential with id {} not found", id);
-                return Err(format!("Credential with id {} not found", id));
+                return Err(HolderError::CredentialNotFound(id.clone()));
             }
         }
 
@@ -59,13 +69,12 @@ impl Holder {
         };
 
         debug!("Creating presentation JSON for signing");
-        let presentation_json = serde_json::to_value(&presentation).map_err(|e| {
-            info!("Failed to serialize presentation: {}", e);
-            e.to_string()
-        })?;
+        let presentation_json = serde_json::to_value(&presentation)
+            .map_err(|e| HolderError::SerializationError(e.to_string()))?;
 
         debug!("Generating signature for presentation");
-        let mut proof = crypto::sign_json(&presentation_json)?;
+        let mut proof = crypto::sign_json(&presentation_json)
+            .map_err(|e| HolderError::ProofCreationError(e.to_string()))?;
 
         debug!("Adding domain and challenge to proof");
         if let Some(proof_obj) = proof.as_object_mut() {
@@ -80,7 +89,9 @@ impl Holder {
             debug!("Domain and challenge added to proof");
         } else {
             info!("Failed to create proof: proof is not an object");
-            return Err("Failed to create proof".to_string());
+            return Err(HolderError::ProofCreationError(
+                "Failed to create proof".to_string(),
+            ));
         }
 
         presentation.proof = Some(proof);
