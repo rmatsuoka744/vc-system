@@ -45,7 +45,11 @@ async fn main() -> std::io::Result<()> {
                         "/credentials",
                         web::post().to(issuer::api::issue_credential),
                     )
-                    .route("/metadata", web::get().to(issuer::api::get_issuer_metadata)),
+                    .route("/metadata", web::get().to(issuer::api::get_issuer_metadata))
+                    .route(
+                        "/sd-jwt-credential",
+                        web::post().to(issuer::api::issue_sd_jwt_credential),
+                    ),
             )
             // Verifier のルートを設定
             .service(

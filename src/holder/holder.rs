@@ -113,6 +113,8 @@ mod tests {
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
             proof: None,
+            sd_jwt: None,
+            disclosures: None,
         };
 
         let result = holder.store_credential(credential.clone());
@@ -135,6 +137,8 @@ mod tests {
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
             proof: None,
+            sd_jwt: None,
+            disclosures: None,
         };
 
         let credential_id = holder.store_credential(credential).unwrap();
@@ -174,6 +178,8 @@ mod tests {
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
             proof: None,
+            sd_jwt: None,
+            disclosures: None,
         };
 
         let req = test::TestRequest::post()
@@ -209,6 +215,8 @@ mod tests {
             issuance_date: "2023-01-01T00:00:00Z".to_string(),
             credential_subject: serde_json::json!({"id": "did:example:456", "name": "Alice"}),
             proof: None,
+            sd_jwt: None,
+            disclosures: None,
         };
         holder.store_credential(credential).unwrap();
 

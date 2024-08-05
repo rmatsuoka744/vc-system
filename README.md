@@ -12,6 +12,9 @@ vc-system/
 ├── Cargo.toml
 ├── README.md
 ├── docs
+│   └── API.md
+├── keys
+│   └── keys.json
 ├── src
 │   ├── holder
 │   │   ├── api.rs
@@ -20,16 +23,20 @@ vc-system/
 │   │   └── storage.rs
 │   ├── issuer
 │   │   ├── api.rs
+│   │   ├── error.rs
 │   │   ├── issuer.rs
-│   │   └── mod.rs
+│   │   ├── mod.rs
+│   │   └── schema.rs
 │   ├── main.rs
 │   ├── models
 │   │   ├── credential.rs
 │   │   ├── mod.rs
-│   │   └── presentation.rs
+│   │   ├── presentation.rs
+│   │   └── schema.rs
 │   ├── utils
 │   │   ├── crypto.rs
 │   │   ├── json_ld.rs
+│   │   ├── key_manager.rs
 │   │   └── mod.rs
 │   └── verifier
 │       ├── api.rs

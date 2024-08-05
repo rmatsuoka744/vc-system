@@ -18,6 +18,8 @@ ed25519-dalek = "1.0.1"
 rand = "0.7.3"
 base58 = "0.2.0"
 lazy_static = "1.4.0"
+base64 = "0.22.1"
+sha2 = "0.10.8"
 
 [dev-dependencies]
 actix-rt = "2.8.0"

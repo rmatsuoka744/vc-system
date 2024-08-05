@@ -13,3 +13,9 @@ pub enum IssuerError {
     #[error("Crypto error: {0}")]
     CryptoError(String),
 }
+
+impl From<String> for IssuerError {
+    fn from(error: String) -> Self {
+        IssuerError::SigningError(error)
+    }
+}

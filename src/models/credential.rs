@@ -28,6 +28,9 @@ pub struct CredentialResponse {
     pub credential_subject: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sd_jwt: Option<String>,
+    pub disclosures: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -65,4 +68,11 @@ pub struct VerifiablePresentation {
     pub verifiable_credential: Vec<CredentialResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SDJWTCredentialResponse {
+    pub verifiable_credential: CredentialResponse,
+    pub sd_jwt: String,
+    pub disclosures: Vec<String>,
 }
