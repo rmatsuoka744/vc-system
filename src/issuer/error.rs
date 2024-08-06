@@ -11,10 +11,10 @@ pub enum IssuerError {
     SerializationError(String),
     #[error("Signing error: {0}")]
     SigningError(String),
-    #[error("JWT creation error: {0}")]
-    JwtCreationError(String),
-    #[error("Invalid SD-JWT format")]
-    InvalidSdJwtFormat,
+    //#[error("JWT creation error: {0}")]
+    //JwtCreationError(String),
+    //#[error("Invalid SD-JWT format")]
+    //InvalidSdJwtFormat,
     #[error("Utils error: {0}")]
     UtilsError(#[from] UtilsError),
 }

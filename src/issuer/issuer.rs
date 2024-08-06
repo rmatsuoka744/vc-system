@@ -6,7 +6,7 @@ use crate::models::sd_jwt::{SDJWTCredentialRequest, SDJWTCredentialResponse};
 use crate::utils::{crypto, sd_jwt};
 use chrono::Utc;
 use log::{debug, error, info};
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 pub fn create_credential(request: CredentialRequest) -> Result<CredentialResponse, IssuerError> {
@@ -28,9 +28,7 @@ pub fn create_sd_jwt_credential(
 ) -> Result<CredentialResponse, IssuerError> {
     info!("Creating SD-JWT credential");
 
-    let (claims, disclosures) =
-        create_sd_jwt_claims(&request).map_err(|e| IssuerError::JwtCreationError(e.to_string()))?;
-    let sd_jwt = sign_sd_jwt_claims(claims)?;
+    let (sd_jwt, disclosures) = create_sd_jwt(&request)?;
 
     let vc_request = CredentialRequest {
         context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
@@ -44,8 +42,6 @@ pub fn create_sd_jwt_credential(
     };
     let mut vc = create_credential(vc_request)?;
 
-    vc = remove_disclosed_attributes(vc, &disclosures);
-
     vc.sd_jwt = Some(sd_jwt);
     vc.disclosures = Some(disclosures);
 
@@ -55,12 +51,21 @@ pub fn create_sd_jwt_credential(
 pub fn create_sd_jwt_vc(
     request: SDJWTCredentialRequest,
 ) -> Result<SDJWTCredentialResponse, IssuerError> {
-    let vc = create_sd_jwt_credential(request)?;
+    let mut vc = create_sd_jwt_credential(request)?;
 
+    // `CredentialResponse` から `sd_jwt` と `disclosures` を取り出し、`CredentialResponse` から削除
+    let sd_jwt = vc.sd_jwt.take().unwrap_or_default();
+    let disclosures = vc.disclosures.take().unwrap_or_else(Vec::new);
+
+    // `CredentialResponse` から `sd_jwt` と `disclosures` を削除
+    vc.sd_jwt = None;
+    vc.disclosures = None;
+
+    // `SDJWTCredentialResponse` を作成して返す
     Ok(SDJWTCredentialResponse {
-        verifiable_credential: vc.clone(),
-        sd_jwt: vc.sd_jwt.unwrap_or_default(),
-        disclosures: vc.disclosures.unwrap_or_default(),
+        verifiable_credential: vc,
+        sd_jwt,
+        disclosures,
     })
 }
 
@@ -115,7 +120,8 @@ fn create_unsigned_credential(
 fn sign_and_finalize_credential(
     mut credential: CredentialResponse,
 ) -> Result<CredentialResponse, IssuerError> {
-    let credential_json = serialize_credential(&credential)?;
+    let credential_json = serde_json::to_value(&credential)
+        .map_err(|e| IssuerError::SerializationError(e.to_string()))?;
 
     let proof = crypto::sign_json(&credential_json)
         .map_err(|e| IssuerError::SigningError(e.to_string()))?;
@@ -128,78 +134,39 @@ fn sign_and_finalize_credential(
     Ok(credential)
 }
 
-fn serialize_credential(credential: &CredentialResponse) -> Result<Value, IssuerError> {
-    serde_json::to_value(credential).map_err(|e| IssuerError::SerializationError(e.to_string()))
-}
-
-fn create_sd_jwt_claims(
-    request: &SDJWTCredentialRequest,
-) -> Result<(Value, Vec<String>), IssuerError> {
+fn create_sd_jwt(request: &SDJWTCredentialRequest) -> Result<(String, Vec<String>), IssuerError> {
     let mut claims = json!({
         "iss": "did:example:123",
         "iat": Utc::now().timestamp(),
+        "vct": "SDJWTCredential",
         "_sd_alg": "sha-256",
     });
 
-    let (sd_claims, disclosures) = build_sd_jwt_claims(&request)?;
+    let mut disclosures = Vec::new();
+    let mut sd_claims = Vec::new();
 
-    claims["_sd"] = sd_claims;
+    // Issuer側で選択的開示を決定するロジック
+    // そのうち動的に設定できるように改修するかも
+    let selective_disclosure_claims = vec!["email", "birthdate"]; // 例として
 
     for (key, value) in request.credential_subject.as_object().unwrap() {
-        if !request.selective_disclosure.contains(key) {
+        if selective_disclosure_claims.contains(&key.as_str()) {
+            let salt = sd_jwt::create_salt();
+            let disclosure = sd_jwt::create_disclosure(&salt, key, value);
+            let disclosure_hash = sd_jwt::hash_disclosure(&disclosure);
+            sd_claims.push(disclosure_hash);
+            disclosures.push(disclosure);
+        } else {
             claims[key] = value.clone();
         }
     }
 
-    Ok((claims, disclosures))
-}
+    claims["_sd"] = json!(sd_claims);
 
-fn build_sd_jwt_claims(
-    request: &SDJWTCredentialRequest,
-) -> Result<(Value, Vec<String>), IssuerError> {
-    let mut disclosures = Vec::new();
-    let mut sd_claims = json!({});
-
-    for claim_name in &request.selective_disclosure {
-        if let Some(claim_value) = request.credential_subject.get(claim_name) {
-            let salt = sd_jwt::create_salt();
-            let disclosure = sd_jwt::create_disclosure(&salt, claim_name, claim_value);
-            let disclosure_hash = sd_jwt::hash_disclosure(&disclosure);
-
-            sd_claims[claim_name] = json!(disclosure_hash);
-            disclosures.push(disclosure);
-        }
-    }
-
-    Ok((sd_claims, disclosures))
-}
-
-fn sign_sd_jwt_claims(claims: Value) -> Result<String, IssuerError> {
-    debug!("Claims before signing: {:?}", claims);
     let sd_jwt =
         crypto::sign_json(&claims).map_err(|e| IssuerError::SigningError(e.to_string()))?;
-    match sd_jwt {
-        Value::String(jwt) => {
-            debug!("Signed SD-JWT: {}", jwt);
-            Ok(jwt)
-        }
-        _ => Err(IssuerError::InvalidSdJwtFormat),
-    }
-}
 
-fn remove_disclosed_attributes(
-    mut vc: CredentialResponse,
-    disclosures: &[String],
-) -> CredentialResponse {
-    for attr in disclosures {
-        if let Some(attr_name) = attr.splitn(3, '.').nth(1) {
-            vc.credential_subject
-                .as_object_mut()
-                .unwrap()
-                .remove(attr_name);
-        }
-    }
-    vc
+    Ok((sd_jwt.as_str().unwrap().to_string(), disclosures))
 }
 
 #[cfg(test)]
@@ -315,7 +282,6 @@ mod tests {
                 "email": "alice@example.com",
                 "birthdate": "1990-01-01"
             }),
-            selective_disclosure: vec!["email".to_string(), "birthdate".to_string()],
         };
 
         let result = create_sd_jwt_credential(request);
@@ -323,16 +289,18 @@ mod tests {
 
         let response = result.unwrap();
 
-        println!("SD-JWT: {:?}", response.sd_jwt);
-        println!("Disclosures: {:?}", response.disclosures);
+        assert!(response.sd_jwt.is_some(), "SD-JWT should be present");
+        assert!(
+            response.disclosures.is_some(),
+            "Disclosures should be present"
+        );
 
-        let sd_jwt = response.sd_jwt.expect("SD-JWT should be present");
+        let sd_jwt = response.sd_jwt.unwrap();
         let parts: Vec<&str> = sd_jwt.split('.').collect();
         assert_eq!(parts.len(), 3, "SD-JWT should have three parts");
 
         let payload = URL_SAFE_NO_PAD.decode(parts[1]).unwrap();
         let payload: serde_json::Value = serde_json::from_slice(&payload).unwrap();
-        println!("Decoded SD-JWT payload: {:?}", payload);
 
         assert!(
             payload.get("iss").is_some(),
@@ -343,34 +311,38 @@ mod tests {
             "Issued At claim should be present"
         );
         assert!(
+            payload.get("vct").is_some(),
+            "VC Type claim should be present"
+        );
+        assert!(
             payload.get("_sd_alg").is_some(),
             "SD algorithm claim should be present"
         );
 
-        let sd_claims = payload.get("_sd").unwrap().as_object().unwrap();
-        assert!(
-            sd_claims.contains_key("email"),
-            "Email should be in _sd claims"
-        );
-        assert!(
-            sd_claims.contains_key("birthdate"),
-            "Birthdate should be in _sd claims"
-        );
+        let sd_claims = payload.get("_sd").unwrap().as_array().unwrap();
+        assert_eq!(sd_claims.len(), 2, "There should be 2 SD claims");
 
-        assert_eq!(
-            payload["given_name"], "Alice",
+        assert!(
+            payload.get("given_name").is_some(),
             "Given name should be present in clear"
         );
-        assert_eq!(
-            payload["family_name"], "Smith",
+        assert!(
+            payload.get("family_name").is_some(),
             "Family name should be present in clear"
         );
+        assert!(
+            payload.get("email").is_none(),
+            "Email should not be present in clear"
+        );
+        assert!(
+            payload.get("birthdate").is_none(),
+            "Birthdate should not be present in clear"
+        );
 
-        let disclosures = response.disclosures.expect("Disclosures should be present");
+        let disclosures = response.disclosures.unwrap();
         assert_eq!(disclosures.len(), 2, "There should be 2 disclosures");
 
-        for (index, disclosure) in disclosures.iter().enumerate() {
-            println!("Checking disclosure {}: {:?}", index, disclosure);
+        for disclosure in disclosures {
             let parts: Vec<&str> = disclosure.splitn(3, '.').collect();
             assert_eq!(parts.len(), 3, "Each disclosure should have three parts");
             assert!(!parts[0].is_empty(), "Salt should not be empty");

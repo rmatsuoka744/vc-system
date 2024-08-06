@@ -155,7 +155,6 @@ mod tests {
                 "email": "alice@example.com",
                 "birthdate": "1990-01-01"
             }),
-            selective_disclosure: vec!["email".to_string(), "birthdate".to_string()],
         };
 
         let sd_jwt_response = create_sd_jwt_credential(request).unwrap();

@@ -30,6 +30,7 @@ pub struct CredentialResponse {
     pub proof: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sd_jwt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disclosures: Option<Vec<String>>,
 }
 

@@ -7,7 +7,7 @@ use serde_json::Value;
 pub struct SDJWTCredentialRequest {
     #[serde(rename = "credentialSubject")]
     pub credential_subject: Value,
-    pub selective_disclosure: Vec<String>,
+    //pub selective_disclosure: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
