@@ -30,18 +30,21 @@ pub fn create_sd_jwt_credential(
 
     let (sd_jwt, disclosures) = create_sd_jwt(&request)?;
 
+    // VCリクエストの構造をクライアントに設定させる項目のみ含める
     let vc_request = CredentialRequest {
         context: vec!["https://www.w3.org/2018/credentials/v1".to_string()],
         types: vec![
             "VerifiableCredential".to_string(),
             "SDJWTCredential".to_string(),
         ],
-        issuer: "did:example:123".to_string(),
-        issuance_date: Utc::now().to_rfc3339(),
+        issuer: "".to_string(),  // Issuer側で設定するため空にする
+        issuance_date: "".to_string(),  // Issuer側で設定するため空にする
         credential_subject: request.credential_subject.clone(),
     };
+    
     let mut vc = create_credential(vc_request)?;
 
+    // SD-JWT と開示情報を追加
     vc.sd_jwt = Some(sd_jwt);
     vc.disclosures = Some(disclosures);
 
@@ -55,7 +58,7 @@ pub fn create_sd_jwt_vc(
 
     // `CredentialResponse` から `sd_jwt` と `disclosures` を取り出し、`CredentialResponse` から削除
     let sd_jwt = vc.sd_jwt.take().unwrap_or_default();
-    let disclosures = vc.disclosures.take().unwrap_or_else(Vec::new);
+    let disclosures = vc.disclosures.take().unwrap_or_default();
 
     // `CredentialResponse` から `sd_jwt` と `disclosures` を削除
     vc.sd_jwt = None;
@@ -108,8 +111,8 @@ fn create_unsigned_credential(
         context: request.context,
         id: Some(format!("http://example.edu/credentials/{}", credential_id)),
         types: request.types,
-        issuer: request.issuer,
-        issuance_date: Utc::now().to_rfc3339(),
+        issuer: "did:example:123".to_string(),  // Issuer側で設定
+        issuance_date: Utc::now().to_rfc3339(),  // Issuer側で設定
         credential_subject: request.credential_subject,
         proof: None,
         sd_jwt: None,
@@ -136,7 +139,7 @@ fn sign_and_finalize_credential(
 
 fn create_sd_jwt(request: &SDJWTCredentialRequest) -> Result<(String, Vec<String>), IssuerError> {
     let mut claims = json!({
-        "iss": "did:example:123",
+        "iss": "did:example:123",  // Issuer側で設定
         "iat": Utc::now().timestamp(),
         "vct": "SDJWTCredential",
         "_sd_alg": "sha-256",
@@ -168,6 +171,7 @@ fn create_sd_jwt(request: &SDJWTCredentialRequest) -> Result<(String, Vec<String
 
     Ok((sd_jwt.as_str().unwrap().to_string(), disclosures))
 }
+
 
 #[cfg(test)]
 mod tests {

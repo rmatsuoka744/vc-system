@@ -1,8 +1,11 @@
-## W3C準拠 Verifiable Credentials システム設計書
+## SD-JWT-VC
+
+### 始めに
+まだ全然仕様を理解していないので暫定的に必要な機能だけ実装してみます。後々に仕様に準拠するよう改修する予定です。
 
 ### 1. システム概要
 
-本システムは、W3C Verifiable Credentials Data Model 1.1に完全準拠したVerifiable Credentials (VC) システムを実装します。システムは3つの主要コンポーネント（Issuer、Holder、Verifier）で構成され、各コンポーネントは独立したマイクロサービスとして実装されます。
+本システムは、draft-ietf-oauth-sd-jwt-vc-04に完全準拠したVerifiable Credentials (VC) システムを実装します。システムは3つの主要コンポーネント（Issuer、Holder、Verifier）で構成され、各コンポーネントは独立したマイクロサービスとして実装されます。SD-JWT-VCの仕様は[draft-ietf-oauth-sd-jwt-vc-04](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)に従う予定です。
 
 ### 2. フォルダ構成
 
