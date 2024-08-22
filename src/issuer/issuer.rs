@@ -37,11 +37,11 @@ pub fn create_sd_jwt_credential(
             "VerifiableCredential".to_string(),
             "SDJWTCredential".to_string(),
         ],
-        issuer: "".to_string(),  // Issuer側で設定するため空にする
-        issuance_date: "".to_string(),  // Issuer側で設定するため空にする
+        issuer: "".to_string(),        // Issuer側で設定するため空にする
+        issuance_date: "".to_string(), // Issuer側で設定するため空にする
         credential_subject: request.credential_subject.clone(),
     };
-    
+
     let mut vc = create_credential(vc_request)?;
 
     // SD-JWT と開示情報を追加
@@ -111,8 +111,8 @@ fn create_unsigned_credential(
         context: request.context,
         id: Some(format!("http://example.edu/credentials/{}", credential_id)),
         types: request.types,
-        issuer: "did:example:123".to_string(),  // Issuer側で設定
-        issuance_date: Utc::now().to_rfc3339(),  // Issuer側で設定
+        issuer: "did:example:123".to_string(), // Issuer側で設定
+        issuance_date: Utc::now().to_rfc3339(), // Issuer側で設定
         credential_subject: request.credential_subject,
         proof: None,
         sd_jwt: None,
@@ -154,11 +154,11 @@ fn create_sd_jwt(request: &SDJWTCredentialRequest) -> Result<(String, Vec<String
 
     for (key, value) in request.credential_subject.as_object().unwrap() {
         if selective_disclosure_claims.contains(&key.as_str()) {
-            let salt = sd_jwt::create_salt();
+            let salt = sd_jwt::create_salt(&format!("{}:{}", key, value));
             let disclosure = sd_jwt::create_disclosure(&salt, key, value);
             let disclosure_hash = sd_jwt::hash_disclosure(&disclosure);
             sd_claims.push(disclosure_hash);
-            disclosures.push(disclosure);
+            disclosures.push(salt); // ソルトのみを保存
         } else {
             claims[key] = value.clone();
         }
@@ -171,7 +171,6 @@ fn create_sd_jwt(request: &SDJWTCredentialRequest) -> Result<(String, Vec<String
 
     Ok((sd_jwt.as_str().unwrap().to_string(), disclosures))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -347,11 +346,20 @@ mod tests {
         assert_eq!(disclosures.len(), 2, "There should be 2 disclosures");
 
         for disclosure in disclosures {
-            let parts: Vec<&str> = disclosure.splitn(3, '.').collect();
-            assert_eq!(parts.len(), 3, "Each disclosure should have three parts");
-            assert!(!parts[0].is_empty(), "Salt should not be empty");
-            assert!(!parts[1].is_empty(), "Claim name should not be empty");
-            assert!(!parts[2].is_empty(), "Claim value should not be empty");
+            // ソルトのフォーマットをチェック（Base64 URL-safe エンコーディング）
+            assert!(
+                disclosure
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '-' || c == '_'),
+                "Disclosure should only contain Base64 URL-safe characters"
+            );
+
+            // ソルトの長さをチェック（16バイトのBase64エンコードは22文字になる）
+            assert_eq!(
+                disclosure.len(),
+                22,
+                "Salt should be 22 characters long (16 bytes in Base64)"
+            );
         }
     }
 }

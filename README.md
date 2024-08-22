@@ -21,6 +21,7 @@ vc-system/
 ├── src
 │   ├── holder
 │   │   ├── api.rs
+│   │   ├── error.rs
 │   │   ├── holder.rs
 │   │   ├── mod.rs
 │   │   └── storage.rs
@@ -35,14 +36,18 @@ vc-system/
 │   │   ├── credential.rs
 │   │   ├── mod.rs
 │   │   ├── presentation.rs
-│   │   └── schema.rs
+│   │   ├── schema.rs
+│   │   └── sd_jwt.rs
 │   ├── utils
 │   │   ├── crypto.rs
+│   │   ├── error.rs
 │   │   ├── json_ld.rs
 │   │   ├── key_manager.rs
-│   │   └── mod.rs
+│   │   ├── mod.rs
+│   │   └── sd_jwt.rs
 │   └── verifier
 │       ├── api.rs
+│       ├── error.rs
 │       ├── mod.rs
 │       └── verifier.rs
 ├── target

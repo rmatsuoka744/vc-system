@@ -1,11 +1,12 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use sha2::{Sha256, Digest};
-use rand::Rng;
 use serde_json::Value;
 
-pub fn create_salt() -> String {
-    let salt: [u8; 16] = rand::thread_rng().gen();
-    URL_SAFE_NO_PAD.encode(salt)
+pub fn create_salt(input: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let result = hasher.finalize();
+    URL_SAFE_NO_PAD.encode(&result[..16]) // 最初の16バイトを使用
 }
 
 pub fn create_disclosure(salt: &str, claim_name: &str, claim_value: &Value) -> String {
