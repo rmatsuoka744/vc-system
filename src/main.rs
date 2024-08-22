@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
                     )
                     .route("/metadata", web::get().to(issuer::api::get_issuer_metadata))
                     .route(
-                        "/sd-jwt-credential",
+                        "/sd-jwt-credentials",
                         web::post().to(issuer::api::issue_sd_jwt_credential),
                     ),
             )
