@@ -36,29 +36,32 @@ curl -X POST http://localhost:8080/issuer/credentials \
 
 ```json
 {
-  "@context": [
-    "https://www.w3.org/2018/credentials/v1",
-    "https://www.w3.org/2018/credentials/examples/v1"
-  ],
-  "id": "http://example.edu/credentials/3732",
-  "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-  "issuer": "did:example:123",
-  "issuanceDate": "2023-06-01T19:23:24Z",
-  "credentialSubject": {
-    "id": "did:example:456",
-    "name": "Alice Johnson",
-    "degree": {
-      "type": "BachelorDegree",
-      "name": "Bachelor of Science in Mechanical Engineering"
+    "@context": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://www.w3.org/2018/credentials/examples/v1"
+    ],
+    "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+    "type": [
+        "VerifiableCredential",
+        "UniversityDegreeCredential"
+    ],
+    "issuer": "did:example:123",
+    "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+    "credentialSubject": {
+        "degree": {
+            "name": "Bachelor of Science in Mechanical Engineering",
+            "type": "BachelorDegree"
+        },
+        "id": "did:example:456",
+        "name": "Alice Johnson"
+    },
+    "proof": {
+        "created": "2024-08-22T08:46:01.483877358+00:00",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "did:example:123#key-1"
     }
-  },
-  "proof": {
-    "type": "Ed25519Signature2020",
-    "created": "2023-06-01T19:23:24Z",
-    "verificationMethod": "did:example:123#key-1",
-    "proofPurpose": "assertionMethod",
-    "proofValue": "z58DAdkxz7A..."
-  }
 }
 ```
 
@@ -72,14 +75,6 @@ curl -X POST http://localhost:8080/issuer/credentials \
 curl -X POST http://localhost:8080/issuer/sd-jwt-credentials \
 -H "Content-Type: application/json" \
 -d '{
-    "@context": [
-        "https://www.w3.org/2018/credentials/v1",
-        "https://www.w3.org/2018/credentials/examples/v1"
-    ],
-    "type": [
-        "VerifiableCredential",
-        "UniversityDegreeCredential"
-    ],
     "credentialSubject": {
         "id": "did:example:456",
         "given_name": "Alice",
@@ -102,13 +97,13 @@ curl -X POST http://localhost:8080/issuer/sd-jwt-credentials \
         "@context": [
             "https://www.w3.org/2018/credentials/v1"
         ],
-        "id": "http://example.edu/credentials/bf1fbd5e-b71e-44ef-abeb-d739889a0eee",
+        "id": "http://example.edu/credentials/e064a36e-a597-49a8-9845-b5d8a6ac5503",
         "type": [
             "VerifiableCredential",
             "SDJWTCredential"
         ],
         "issuer": "did:example:123",
-        "issuanceDate": "2024-08-22T06:26:51.151680390+00:00",
+        "issuanceDate": "2024-08-22T08:45:10.615784222+00:00",
         "credentialSubject": {
             "birthdate": "1/1",
             "degree": {
@@ -121,17 +116,17 @@ curl -X POST http://localhost:8080/issuer/sd-jwt-credentials \
             "id": "did:example:456"
         },
         "proof": {
-            "created": "2024-08-22T06:26:51.152480517+00:00",
+            "created": "2024-08-22T08:45:10.616220523+00:00",
             "proofPurpose": "assertionMethod",
-            "proofValue": "2yGjUxB816C3EJ6ybcgbJCRL4vyt7JucBz5ahd83EjANnaWgwNhBtL6PMeBxxtArzskocFFKoqCWBBhvdVqys7J8",
+            "proofValue": "5kHCjywDSHwa1C38uHVafYG8KnzGxqFKtUjfgwidXVdXVyLB42fppo77p5yfpirEkmVeyJ9dKQbnTXWUJzKFfzUP",
             "type": "Ed25519Signature2020",
             "verificationMethod": "did:example:123#key-1"
         }
     },
-    "sd_jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJfc2QiOlsiaUVURTRiNlhadnZCOG9FVFE3Sk96eklGRTJUTlpyY2pEUU9GZjRhOVhFUSIsIk9xMGNZNmh3U2JWZ3FvM0RwQlduSkVEMDR4WWh5eEZwRU8wWEl4M3RqZmsiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJkZWdyZWUiOnsibmFtZSI6IkJhY2hlbG9yIG9mIFNjaWVuY2UgaW4gTWVjaGFuaWNhbCBFbmdpbmVlcmluZyIsInR5cGUiOiJCYWNoZWxvckRlZ3JlZSJ9LCJmYW1pbHlfbmFtZSI6IkpvaG5zb24iLCJnaXZlbl9uYW1lIjoiQWxpY2UiLCJpYXQiOjE3MjQzMDgwMTEsImlkIjoiZGlkOmV4YW1wbGU6NDU2IiwiaXNzIjoiZGlkOmV4YW1wbGU6MTIzIiwidmN0IjoiU0RKV1RDcmVkZW50aWFsIn0.VodBLUKXqZfqagRieIDDbeyXVSB82jQXl3_DC8IQBdazWCJbQ566zIB66kmWdxsmdyrHCJtaqkTxA09MH5NRDg",
+    "sd_jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJfc2QiOlsiYmdTRFctRHZENno4eFFZVmYwV3dQclBwcGR4TzFVWFhYY1ZhS1BUVERVbyIsImRCZDJCX1IyTzhRaDZiTmxVYzZsV1Y4a1pBdTYyOGZpQXVrcXZROWxVYTAiXSwiX3NkX2FsZyI6InNoYS0yNTYiLCJkZWdyZWUiOnsibmFtZSI6IkJhY2hlbG9yIG9mIFNjaWVuY2UgaW4gTWVjaGFuaWNhbCBFbmdpbmVlcmluZyIsInR5cGUiOiJCYWNoZWxvckRlZ3JlZSJ9LCJmYW1pbHlfbmFtZSI6IkpvaG5zb24iLCJnaXZlbl9uYW1lIjoiQWxpY2UiLCJpYXQiOjE3MjQzMTYzMTAsImlkIjoiZGlkOmV4YW1wbGU6NDU2IiwiaXNzIjoiZGlkOmV4YW1wbGU6MTIzIiwidmN0IjoiU0RKV1RDcmVkZW50aWFsIn0.lO0soFlC0F5OLkPjJ61oqZ67I9aB0vyjRfnB9Dt7j6kHsBjlxtPu9z_pw2Sk5vpcMvbCi_093uj9AHfucuhECw",
     "disclosures": [
-        "w70I5CoZtx_x4oOzTGXyzA.birthdate.1/1",
-        "EHcjQ7P835_zJATp2M_ymQ.email.em@il"
+        "ky5mfpycfuIGnZuSqoZ5AQ",
+        "JzxTfo8t9qFKA0ey3UxPhQ"
     ]
 }
 ```
@@ -152,13 +147,13 @@ curl http://localhost:8080/issuer/metadata
 
 ```json
 {
-  "id": "did:example:123",
-  "name": "Example University",
-  "publicKey": {
-    "id": "did:example:123#key-1",
-    "type": "Ed25519VerificationKey2020",
-    "publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-  }
+    "id": "did:example:123",
+    "name": "Example University",
+    "publicKey": {
+        "id": "did:example:123#key-1",
+        "type": "Ed25519VerificationKey2020",
+        "publicKeyMultibase": "z8yQxpqtQyTP4RpnTtBAUFdAEBjndVWuqveTZ2rNq7C2n"
+    }
 }
 ```
 
@@ -176,38 +171,41 @@ curl http://localhost:8080/issuer/metadata
 curl -X POST http://localhost:8080/holder/credentials \
      -H "Content-Type: application/json" \
      -d '{
-       "@context": [
-         "https://www.w3.org/2018/credentials/v1",
-         "https://www.w3.org/2018/credentials/examples/v1"
-       ],
-       "id": "http://example.edu/credentials/3732",
-       "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-       "issuer": "did:example:123",
-       "issuanceDate": "2023-06-01T19:23:24Z",
-       "credentialSubject": {
-         "id": "did:example:456",
-         "name": "Alice Johnson",
-         "degree": {
-           "type": "BachelorDegree",
-           "name": "Bachelor of Science in Mechanical Engineering"
-         }
-       },
-       "proof": {
-         "type": "Ed25519Signature2020",
-         "created": "2023-06-01T19:23:24Z",
-         "verificationMethod": "did:example:123#key-1",
-         "proofPurpose": "assertionMethod",
-         "proofValue": "z58DAdkxz7A..."
-       }
-     }'
+    "@context": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://www.w3.org/2018/credentials/examples/v1"
+    ],
+    "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+    "type": [
+        "VerifiableCredential",
+        "UniversityDegreeCredential"
+    ],
+    "issuer": "did:example:123",
+    "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+    "credentialSubject": {
+        "degree": {
+            "name": "Bachelor of Science in Mechanical Engineering",
+            "type": "BachelorDegree"
+        },
+        "id": "did:example:456",
+        "name": "Alice Johnson"
+    },
+    "proof": {
+        "created": "2024-08-22T08:46:01.483877358+00:00",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "did:example:123#key-1"
+    }
+}'
 ```
 
 **レスポンス例:**
 
 ```json
 {
-  "status": "success",
-  "message": "Credential stored successfully"
+    "id": "08e88f8b-c507-429d-bad5-e04e569b965f",
+    "status": "stored"
 }
 ```
 
@@ -226,22 +224,36 @@ curl http://localhost:8080/holder/credentials
 **レスポンス例:**
 
 ```json
-{
-  "credentials": [
+[
     {
-      "id": "http://example.edu/credentials/3732",
-      "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-      "issuer": "did:example:123",
-      "issuanceDate": "2023-06-01T19:23:24Z"
-    },
-    {
-      "id": "http://example.com/credentials/1234",
-      "type": ["VerifiableCredential", "EmploymentCredential"],
-      "issuer": "did:example:789",
-      "issuanceDate": "2023-05-15T10:30:00Z"
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://www.w3.org/2018/credentials/examples/v1"
+        ],
+        "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+        "type": [
+            "VerifiableCredential",
+            "UniversityDegreeCredential"
+        ],
+        "issuer": "did:example:123",
+        "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+        "credentialSubject": {
+            "degree": {
+                "name": "Bachelor of Science in Mechanical Engineering",
+                "type": "BachelorDegree"
+            },
+            "id": "did:example:456",
+            "name": "Alice Johnson"
+        },
+        "proof": {
+            "created": "2024-08-22T08:46:01.483877358+00:00",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+            "type": "Ed25519Signature2020",
+            "verificationMethod": "did:example:123#key-1"
+        }
     }
-  ]
-}
+]
 ```
 
 ### 2.3 プレゼンテーション作成
@@ -256,7 +268,7 @@ curl http://localhost:8080/holder/credentials
 curl -X POST http://localhost:8080/holder/presentations \
      -H "Content-Type: application/json" \
      -d '{
-       "verifiableCredential": ["http://example.edu/credentials/3732"],
+       "verifiableCredential": ["08e88f8b-c507-429d-bad5-e04e569b965f"],
        "domain": "example.com",
        "challenge": "1f44d55f-f161-4938-a659-f8026467f126"
      }'
@@ -266,42 +278,51 @@ curl -X POST http://localhost:8080/holder/presentations \
 
 ```json
 {
-  "@context": ["https://www.w3.org/2018/credentials/v1"],
-  "type": ["VerifiablePresentation"],
-  "verifiableCredential": [{
     "@context": [
-      "https://www.w3.org/2018/credentials/v1",
-      "https://www.w3.org/2018/credentials/examples/v1"
+        "https://www.w3.org/2018/credentials/v1"
     ],
-    "id": "http://example.edu/credentials/3732",
-    "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-    "issuer": "did:example:123",
-    "issuanceDate": "2023-06-01T19:23:24Z",
-    "credentialSubject": {
-      "id": "did:example:456",
-      "name": "Alice Johnson",
-      "degree": {
-        "type": "BachelorDegree",
-        "name": "Bachelor of Science in Mechanical Engineering"
-      }
-    },
+    "type": [
+        "VerifiablePresentation"
+    ],
+    "verifiableCredential": [
+        {
+            "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1"
+            ],
+            "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+            "type": [
+                "VerifiableCredential",
+                "UniversityDegreeCredential"
+            ],
+            "issuer": "did:example:123",
+            "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+            "credentialSubject": {
+                "degree": {
+                    "name": "Bachelor of Science in Mechanical Engineering",
+                    "type": "BachelorDegree"
+                },
+                "id": "did:example:456",
+                "name": "Alice Johnson"
+            },
+            "proof": {
+                "created": "2024-08-22T08:46:01.483877358+00:00",
+                "proofPurpose": "assertionMethod",
+                "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+                "type": "Ed25519Signature2020",
+                "verificationMethod": "did:example:123#key-1"
+            }
+        }
+    ],
     "proof": {
-      "type": "Ed25519Signature2020",
-      "created": "2023-06-01T19:23:24Z",
-      "verificationMethod": "did:example:123#key-1",
-      "proofPurpose": "assertionMethod",
-      "proofValue": "z58DAdkxz7A..."
+        "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
+        "created": "2024-08-22T08:51:42.787965619+00:00",
+        "domain": "example.com",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "3hzA6ptHpnmhfksMY7ZE1bhNPBZ84kGCMMwVDJp78jD58zkZ6SzYroUfYDKU3x8WgMdE2pRnjj3qJYKiiFftGWCq",
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "did:example:123#key-1"
     }
-  }],
-  "proof": {
-    "type": "Ed25519Signature2020",
-    "created": "2023-06-02T12:00:00Z",
-    "verificationMethod": "did:example:456#key-1",
-    "proofPurpose": "authentication",
-    "proofValue": "z6MkhaXgBZD...",
-    "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
-    "domain": "example.com"
-  }
 }
 ```
 
@@ -319,37 +340,41 @@ Verifiable Credentialの検証を行います。
 curl -X POST http://localhost:8080/verifier/credentials \
      -H "Content-Type: application/json" \
      -d '{
-       "@context": [
-         "https://www.w3.org/2018/credentials/v1",
-         "https://www.w3.org/2018/credentials/examples/v1"
-       ],
-       "id": "http://example.edu/credentials/3732",
-       "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-       "issuer": "did:example:123",
-       "issuanceDate": "2023-06-01T19:23:24Z",
-       "credentialSubject": {
-         "id": "did:example:456",
-         "name": "Alice Johnson",
-         "degree": {
-           "type": "BachelorDegree",
-           "name": "Bachelor of Science in Mechanical Engineering"
-         }
-       },
-       "proof": {
-         "type": "Ed25519Signature2020",
-         "created": "2023-06-01T19:23:24Z",
-         "verificationMethod": "did:example:123#key-1",
-         "proofPurpose": "assertionMethod",
-         "proofValue": "z58DAdkxz7A..."
-       }
-     }'
+    "@context": [
+        "https://www.w3.org/2018/credentials/v1",
+        "https://www.w3.org/2018/credentials/examples/v1"
+    ],
+    "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+    "type": [
+        "VerifiableCredential",
+        "UniversityDegreeCredential"
+    ],
+    "issuer": "did:example:123",
+    "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+    "credentialSubject": {
+        "degree": {
+            "name": "Bachelor of Science in Mechanical Engineering",
+            "type": "BachelorDegree"
+        },
+        "id": "did:example:456",
+        "name": "Alice Johnson"
+    },
+    "proof": {
+        "created": "2024-08-22T08:46:01.483877358+00:00",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "did:example:123#key-1"
+    }
+}'
 ```
 
 **レスポンス例:**
 
 ```json
 {
-  "verified": true
+    "errors": [],
+    "verified": true
 }
 ```
 
@@ -365,49 +390,59 @@ Verifiable Presentationの検証を行います。
 curl -X POST http://localhost:8080/verifier/presentations \
      -H "Content-Type: application/json" \
      -d '{
-       "@context": ["https://www.w3.org/2018/credentials/v1"],
-       "type": ["VerifiablePresentation"],
-       "verifiableCredential": [{
-         "@context": [
-           "https://www.w3.org/2018/credentials/v1",
-           "https://www.w3.org/2018/credentials/examples/v1"
-         ],
-         "id": "http://example.edu/credentials/3732",
-         "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-         "issuer": "did:example:123",
-         "issuanceDate": "2023-06-01T19:23:24Z",
-         "credentialSubject": {
-           "id": "did:example:456",
-           "name": "Alice Johnson",
-           "degree": {
-             "type": "BachelorDegree",
-             "name": "Bachelor of Science in Mechanical Engineering"
-           }
-         },
-         "proof": {
-           "type": "Ed25519Signature2020",
-           "created": "2023-06-01T19:23:24Z",
-           "verificationMethod": "did:example:123#key-1",
-           "proofPurpose": "assertionMethod",
-           "proofValue": "z58DAdkxz7A..."
-         }
-       }],
-       "proof": {
-         "type": "Ed25519Signature2020",
-         "created": "2023-06-02T12:00:00Z",
-         "verificationMethod": "did:example:456#key-1",
-         "proofPurpose": "authentication",
-         "proofValue": "z6MkhaXgBZD...",
-         "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
-         "domain": "example.com"
-       }
-     }'
+    "@context": [
+        "https://www.w3.org/2018/credentials/v1"
+    ],
+    "type": [
+        "VerifiablePresentation"
+    ],
+    "verifiableCredential": [
+        {
+            "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1"
+            ],
+            "id": "http://example.edu/credentials/7c5feb33-9ec2-478d-9197-3a27352299f9",
+            "type": [
+                "VerifiableCredential",
+                "UniversityDegreeCredential"
+            ],
+            "issuer": "did:example:123",
+            "issuanceDate": "2024-08-22T08:46:01.482990377+00:00",
+            "credentialSubject": {
+                "degree": {
+                    "name": "Bachelor of Science in Mechanical Engineering",
+                    "type": "BachelorDegree"
+                },
+                "id": "did:example:456",
+                "name": "Alice Johnson"
+            },
+            "proof": {
+                "created": "2024-08-22T08:46:01.483877358+00:00",
+                "proofPurpose": "assertionMethod",
+                "proofValue": "2x16B1Nv5eDX2LJCnnf287yhQXH2fqhFW2KHRBgMBaNRG4tKTCmHBKMRfkqH6xjpST9uRxMoyuN2HFXDXKkbFYcE",
+                "type": "Ed25519Signature2020",
+                "verificationMethod": "did:example:123#key-1"
+            }
+        }
+    ],
+    "proof": {
+        "challenge": "1f44d55f-f161-4938-a659-f8026467f126",
+        "created": "2024-08-22T08:51:42.787965619+00:00",
+        "domain": "example.com",
+        "proofPurpose": "assertionMethod",
+        "proofValue": "3hzA6ptHpnmhfksMY7ZE1bhNPBZ84kGCMMwVDJp78jD58zkZ6SzYroUfYDKU3x8WgMdE2pRnjj3qJYKiiFftGWCq",
+        "type": "Ed25519Signature2020",
+        "verificationMethod": "did:example:123#key-1"
+    }
+}'
 ```
 
 **レスポンス例:**
 
 ```json
 {
-  "verified": true
+    "errors": [],
+    "verified": true
 }
 ```
